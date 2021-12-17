@@ -1,41 +1,50 @@
 #!/usr/bin/env python3
 
-import pieces
-import board
+from components import (
+        Color,
+        Column,
+        Board,
+        Castle,
+        Rook,
+        Bishop,
+        King,
+        Queen,
+        Pawn
+)
 
 DEFAULT_BOARD = [
-    pieces.Castle(board.Column.A, 1, pieces.Color.WHITE),
-    pieces.Rook(board.Column.B, 1, pieces.Color.WHITE),
-    pieces.Bishop(board.Column.C, 1, pieces.Color.WHITE),
-    pieces.Queen(board.Column.D, 1, pieces.Color.WHITE),
-    pieces.King(board.Column.E, 1, pieces.Color.WHITE),
-    pieces.Bishop(board.Column.F, 1, pieces.Color.WHITE),
-    pieces.Rook(board.Column.G, 1, pieces.Color.WHITE),
-    pieces.Castle(board.Column.H, 1, pieces.Color.WHITE),
-    pieces.Pawn(board.Column.A, 2, pieces.Color.WHITE),
-    pieces.Pawn(board.Column.B, 2, pieces.Color.WHITE),
-    pieces.Pawn(board.Column.C, 2, pieces.Color.WHITE),
-    pieces.Pawn(board.Column.D, 2, pieces.Color.WHITE),
-    pieces.Pawn(board.Column.E, 2, pieces.Color.WHITE),
-    pieces.Pawn(board.Column.F, 2, pieces.Color.WHITE),
-    pieces.Pawn(board.Column.G, 2, pieces.Color.WHITE),
-    pieces.Pawn(board.Column.H, 2, pieces.Color.WHITE),
-    pieces.Castle(board.Column.A, 8, pieces.Color.BLACK),
-    pieces.Rook(board.Column.B, 8, pieces.Color.BLACK),
-    pieces.Bishop(board.Column.C, 8, pieces.Color.BLACK),
-    pieces.Queen(board.Column.D, 8, pieces.Color.BLACK),
-    pieces.King(board.Column.E, 8, pieces.Color.BLACK),
-    pieces.Bishop(board.Column.F, 8, pieces.Color.BLACK),
-    pieces.Rook(board.Column.G, 8, pieces.Color.BLACK),
-    pieces.Castle(board.Column.H, 8, pieces.Color.BLACK),
-    pieces.Pawn(board.Column.A, 7, pieces.Color.BLACK),
-    pieces.Pawn(board.Column.B, 7, pieces.Color.BLACK),
-    pieces.Pawn(board.Column.C, 7, pieces.Color.BLACK),
-    pieces.Pawn(board.Column.D, 7, pieces.Color.BLACK),
-    pieces.Pawn(board.Column.E, 7, pieces.Color.BLACK),
-    pieces.Pawn(board.Column.F, 7, pieces.Color.BLACK),
-    pieces.Pawn(board.Column.G, 7, pieces.Color.BLACK),
-    pieces.Pawn(board.Column.H, 7, pieces.Color.BLACK),
+    Castle(Column.A, 1, Color.WHITE),
+    Rook(Column.B, 1, Color.WHITE),
+    Bishop(Column.C, 1, Color.WHITE),
+    Queen(Column.D, 1, Color.WHITE),
+    King(Column.E, 1, Color.WHITE),
+    Bishop(Column.F, 1, Color.WHITE),
+    Rook(Column.G, 1, Color.WHITE),
+    Castle(Column.H, 1, Color.WHITE),
+    Pawn(Column.A, 2, Color.WHITE),
+    Pawn(Column.B, 2, Color.WHITE),
+    Pawn(Column.C, 2, Color.WHITE),
+    Pawn(Column.D, 2, Color.WHITE),
+    Pawn(Column.E, 2, Color.WHITE),
+    Pawn(Column.F, 2, Color.WHITE),
+    Pawn(Column.G, 2, Color.WHITE),
+    Pawn(Column.H, 2, Color.WHITE),
+    Castle(Column.A, 8, Color.BLACK),
+    Rook(Column.B, 8, Color.BLACK),
+    Bishop(Column.C, 8, Color.BLACK),
+    Queen(Column.D, 8, Color.BLACK),
+    King(Column.E, 8, Color.BLACK),
+    Bishop(Column.F, 8, Color.BLACK),
+    Rook(Column.G, 8, Color.BLACK),
+    Castle(Column.H, 8, Color.BLACK),
+    Pawn(Column.A, 7, Color.BLACK),
+    Pawn(Column.B, 7, Color.BLACK),
+    Pawn(Column.C, 7, Color.BLACK),
+    Pawn(Column.D, 7, Color.BLACK),
+    Pawn(Column.E, 7, Color.BLACK),
+    Pawn(Column.F, 7, Color.BLACK),
+    Pawn(Column.G, 7, Color.BLACK),
+    Pawn(Column.H, 7, Color.BLACK),
 ]
 
 
@@ -52,4 +61,4 @@ def print_board():
 
 
 if __name__ == "__main__":
-    print(board.Board(DEFAULT_BOARD).prettify())
+    print(Board(DEFAULT_BOARD).prettify())
