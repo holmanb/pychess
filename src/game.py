@@ -1,16 +1,6 @@
 #!/usr/bin/env python3
 
-from components import (
-        Color,
-        Column,
-        Board,
-        Castle,
-        Rook,
-        Bishop,
-        King,
-        Queen,
-        Pawn
-)
+from components import Color, Column, Board, Castle, Rook, Bishop, King, Queen, Pawn
 
 DEFAULT_BOARD = [
     Castle(Column.A, 1, Color.WHITE),

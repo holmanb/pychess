@@ -10,6 +10,7 @@ class Column(IntEnum):
     board[Column.A, 1]
     ```
     """
+
     A = 0
     B = 1
     C = 2
@@ -20,7 +21,6 @@ class Column(IntEnum):
     H = 7
 
 
-
 class Color(Enum):
     BLACK = 1
     WHITE = 2
@@ -28,8 +28,7 @@ class Color(Enum):
 
 class Piece:
     def __init__(self, x: Column, y: int, color: Color):
-        """Initialize to index
-        """
+        """Initialize to position"""
         self.x = x
         self.y = y - 1
         self.index_valid_or_raise(self.x, self.y)
@@ -47,7 +46,8 @@ class Piece:
     a.move_to_position(H, 2)
     ```
     """
-    def get_possible_moves(self):
+
+    def get_possible_moves_index(self) -> List:
         raise NotImplementedError()
 
     def __str__(self) -> str:
@@ -64,8 +64,7 @@ class Piece:
             raise ValueError(f"invalid index [{x}][{y}]")
 
     def move_to_index(self, x: int, y: int) -> None:
-        """Takes index values to move to
-        """
+        """Takes index values to move to"""
         if not Piece.is_index_valid(x, y):
             ValueError("invalid x value")
         self.x = x
@@ -88,37 +87,56 @@ class Pawn(Piece):
     def __str__(self) -> str:
         return "P"
 
-    def get_possible_moves_index(self, b) -> Union[List[Tuple[int, int]], None]:
+    def get_possible_moves_index(self, b) -> List:
         moves = []
         if self.color == Color.BLACK:
-            y_direction = 1
-        else:
             y_direction = -1
+        else:
+            y_direction = 1
 
         # if not blocked, move forward
         if not self.get_relative_index(b, 0, y_direction):
-            moves.append((self.x,  self.y + y_direction))
+            moves.append((self.x, self.y + y_direction))
 
         # attack
         if (
-                Piece.is_index_valid(self.x - 1, self.y + y_direction)
-                and self.get_relative_index(b, -1, y_direction)
-                and self.color is not self.get_relative_index_color(
-                b, -1, y_direction)
+            Piece.is_index_valid(self.x - 1, self.y + y_direction)
+            and self.get_relative_index(b, -1, y_direction)
+            and self.color is not self.get_relative_index_color(b, -1, y_direction)
         ):
             moves.append((self.x - 1, self.y + y_direction))
         # attack
         if (
-                Piece.is_index_valid(self.x + 1, self.y + y_direction)
-                and self.get_relative_index(b, 1, y_direction)
-                and self.color is not self.get_relative_index_color(
-                b, 1, y_direction)
+            Piece.is_index_valid(self.x + 1, self.y + y_direction)
+            and self.get_relative_index(b, 1, y_direction)
+            and self.color is not self.get_relative_index_color(b, 1, y_direction)
         ):
             moves.append((self.x + 1, self.y + y_direction))
+
+        # if not blocked, move forward
+        if self.color == Color.WHITE:
+            if (
+                1 == self.y
+                and not self.get_relative_index(b, 0, y_direction)
+                and not self.get_relative_index(b, 0, 2 * y_direction)
+            ):
+                moves.append((self.x, self.y + 2 * y_direction))
+        else:
+            if (
+                6 == self.y
+                and not self.get_relative_index(b, 0, y_direction)
+                and not self.get_relative_index(b, 0, 2 * y_direction)
+            ):
+                moves.append((self.x, self.y + 2 * y_direction))
+
         return moves
 
-    def get_possible_moves_position(self, b) -> Union[List[Tuple[int, int]], None]:
-        return [(x, y + 1) for x,y in self.get_possible_moves_index(b)]
+    def get_possible_moves_position(self, b) -> List:
+        return [(x, y + 1) for x, y in self.get_possible_moves_index(b)]
+
+    def promote(self):
+        # phoenix time
+        pass
 
 
 class Rook(Piece):
@@ -126,32 +144,46 @@ class Rook(Piece):
         return "R"
 
 
-class Bishop(Piece):
+class Diagonal:
+    def diagonal(self, b) -> List:
+        return []
+
+
+class Perpendicular:
+    def perpendicular(self, b) -> List:
+        return []
+
+
+class Bishop(Piece, Diagonal):
     def __str__(self) -> str:
         return "B"
 
-    pass
+    def get_possible_moves_position(self, b) -> List:
+        return self.diagonal(b)
 
 
-class Castle(Piece):
+class Castle(Piece, Perpendicular):
     def __str__(self) -> str:
         return "C"
 
-    pass
+    def get_possible_moves_position(self, b) -> List:
+        return self.perpendicular(b)
 
 
 class King(Piece):
     def __str__(self) -> str:
         return "K"
 
-    pass
+    def in_check(self):
+        pass
 
 
-class Queen(Piece):
+class Queen(Piece, Perpendicular, Diagonal):
     def __str__(self) -> str:
         return "Q"
 
-    pass
+    def get_possible_moves_position(self, b) -> List:
+        return self.perpendicular(b).extend(self.diagonal(b))
 
 
 # For type hints
@@ -159,7 +191,6 @@ AllPieces = Union[King, Queen, Castle, Rook, Bishop, Pawn, Piece]
 
 
 class Board:
-
     def __init__(self, pieces: List[AllPieces]):
 
         self.board = [[None for _ in range(8)] for _ in range(8)]
@@ -180,8 +211,7 @@ class Board:
     def init_piece(self, piece: Piece, x: Column, y: int):
 
         self._is_legal_move(x, y)
-        self.board[int(x)][y] = piece
-
+        self.board[x][y] = piece
 
     def set_piece(self, piece: Piece, x: Column, y: int):
         # A1 correlates to index [0][0]
@@ -209,9 +239,11 @@ class Board:
         return "{}{}{}".format(terminal_colors[color], string, RESET)
 
     def prettify(self, assume_dark_term=True) -> str:
+        fill = "."
+
         def color(string):
             if not string:
-                return " "
+                return fill
             if string.color == Color.BLACK:
                 if assume_dark_term:
                     return self.to_color(string, "RED")

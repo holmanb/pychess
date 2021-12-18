@@ -2,7 +2,6 @@ from ..components import Color, Piece, Column, Board, Pawn
 
 
 class TestPieces:
-
     def test_piece_move_to(self):
         p = Piece(Column.A, 1, Color.BLACK)
         p.move_to_position(Column.H, 2)
@@ -27,35 +26,36 @@ class TestPieces:
 
 class TestPawn:
     def test_pawn_get_possible_moves_no_blocks(self):
-        p1 = Pawn(Column.B, 2, Color.BLACK)
+        p1 = Pawn(Column.B, 2, Color.WHITE)
         b = Board([p1])
-        assert [(Column.B, 3)] == p1.get_possible_moves_position(b)
+        assert (Column.B, 3) in p1.get_possible_moves_position(b)
+        assert (Column.B, 4) in p1.get_possible_moves_position(b)
 
     def test_pawn_get_possible_moves_blocked(self):
-        p1 = Pawn(Column.B, 2, Color.BLACK)
-        p2 = Pawn(Column.B, 3, Color.BLACK)
+        p1 = Pawn(Column.B, 2, Color.WHITE)
+        p2 = Pawn(Column.B, 3, Color.WHITE)
         b = Board([p1, p2])
         assert [] == p1.get_possible_moves_position(b)
 
     def test_pawn_get_possible_moves_blocked_attack(self):
-        p1 = Pawn(Column.B, 2, Color.BLACK)
-        p2 = Pawn(Column.B, 3, Color.BLACK)
-        p3 = Pawn(Column.A, 3, Color.WHITE)
+        p1 = Pawn(Column.B, 2, Color.WHITE)
+        p2 = Pawn(Column.B, 3, Color.WHITE)
+        p3 = Pawn(Column.A, 3, Color.BLACK)
         b = Board([p1, p2, p3])
         assert [(Column.A, 3)] == p1.get_possible_moves_position(b)
 
     def test_pawn_get_possible_moves_blocked_attack_two(self):
-        p1 = Pawn(Column.B, 2, Color.BLACK)
-        p2 = Pawn(Column.B, 3, Color.BLACK)
-        p3 = Pawn(Column.A, 3, Color.BLACK)
-        p4 = Pawn(Column.C, 3, Color.WHITE)
+        p1 = Pawn(Column.B, 2, Color.WHITE)
+        p2 = Pawn(Column.B, 3, Color.WHITE)
+        p3 = Pawn(Column.A, 3, Color.WHITE)
+        p4 = Pawn(Column.C, 3, Color.BLACK)
         b = Board([p1, p2, p3, p4])
         assert [(Column.C, 3)] == p1.get_possible_moves_position(b)
 
     def test_pawn_get_possible_moves_three(self):
-        p1 = Pawn(Column.B, 2, Color.BLACK)
-        p2 = Pawn(Column.A, 3, Color.WHITE)
-        p3 = Pawn(Column.C, 3, Color.WHITE)
+        p1 = Pawn(Column.B, 2, Color.WHITE)
+        p2 = Pawn(Column.A, 3, Color.BLACK)
+        p3 = Pawn(Column.C, 3, Color.BLACK)
         b = Board([p1, p2, p3])
         assert (Column.A, 3) in p1.get_possible_moves_position(b)
         assert (Column.B, 3) in p1.get_possible_moves_position(b)
