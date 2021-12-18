@@ -1,5 +1,5 @@
 from enum import Enum, IntEnum
-from typing import Union, List, Tuple, Any
+from typing import Union, List, Any, Tuple
 
 
 class Column(IntEnum):
@@ -20,65 +20,75 @@ class Column(IntEnum):
     H = 7
 
 
+
 class Color(Enum):
     BLACK = 1
     WHITE = 2
 
 
-def x_in_bounds(x: int):
-    return x >= 0 and x < 8
-
-
-def y_in_bounds(y: int):
-    return y >= 1 and y < 9
-
-
 class Piece:
     def __init__(self, x: Column, y: int, color: Color):
+        """Initialize to index
+        """
         self.x = x
-        self.y = y
+        self.y = y - 1
+        self.index_valid_or_raise(self.x, self.y)
         self.color = color
 
     """Base class for all pieces
 
-    param x: coordinates param
-    param y: coordinates param
+    param x: holds the index
+    param y: holds the index
     param color: piece color
 
     The following creates a new black Piece on A1 and moves it to H2
     ```
     a = Piece(A, 1, BLACK)
-    a.move_to(H, 2)
+    a.move_to_position(H, 2)
     ```
     """
     def get_possible_moves(self):
         raise NotImplementedError()
 
-    def __str__(self):
-        raise NotImplementedError()
+    def __str__(self) -> str:
+        """For testing"""
+        return "X"
 
-    def move_to(self, x: Column, y: int) -> None:
+    @classmethod
+    def is_index_valid(cls, x: int, y: int) -> bool:
+        return x >= 0 and x < 8 and y >= 0 and y < 8
+
+    @classmethod
+    def index_valid_or_raise(cls, x: int, y: int):
+        if not Piece.is_index_valid(x, y):
+            raise ValueError(f"invalid index [{x}][{y}]")
+
+    def move_to_index(self, x: int, y: int) -> None:
+        """Takes index values to move to
+        """
+        if not Piece.is_index_valid(x, y):
+            ValueError("invalid x value")
         self.x = x
         self.y = y
 
-    def get_relative_position(self, b, x: int, y: int):
+    def move_to_position(self, x: Column, y: int) -> None:
+        self.index_valid_or_raise(x, y - 1)
+        self.move_to_index(x, y - 1)
+
+    def get_relative_index(self, b, x: int, y: int):
         return b.board[self.x + x][self.y + y]
 
-    def get_relative_position_color(self, b, x: int, y: int):
-        piece = self.get_relative_position(b, x, y)
+    def get_relative_index_color(self, b, x: int, y: int):
+        piece = self.get_relative_index(b, x, y)
         if piece:
             return piece.color
-
-
-class PieceBase(Piece):
-    pass
 
 
 class Pawn(Piece):
     def __str__(self) -> str:
         return "P"
 
-    def get_possible_moves(self, b) -> Union[List[Tuple[int, int]], None]:
+    def get_possible_moves_index(self, b) -> Union[List[Tuple[int, int]], None]:
         moves = []
         if self.color == Color.BLACK:
             y_direction = 1
@@ -86,30 +96,35 @@ class Pawn(Piece):
             y_direction = -1
 
         # if not blocked, move forward
-        if not self.get_relative_position(b, self.x, self.y + y_direction):
+        if not self.get_relative_index(b, 0, y_direction):
             moves.append((self.x,  self.y + y_direction))
 
         # attack
         if (
-                x_in_bounds(self.x - 1)
-                and y_in_bounds(self.y + y_direction)
-                and self.color is not self.get_relative_position_color(
-                    b, self.x - 1, self.y + y_direction)
+                Piece.is_index_valid(self.x - 1, self.y + y_direction)
+                and self.get_relative_index(b, -1, y_direction)
+                and self.color is not self.get_relative_index_color(
+                b, -1, y_direction)
         ):
             moves.append((self.x - 1, self.y + y_direction))
         # attack
         if (
-                x_in_bounds(self.x + 1)
-                and y_in_bounds(self.y + y_direction)
-                and self.color is not self.get_relative_position(
-                    b, self.x + 1, self.y + y_direction)
+                Piece.is_index_valid(self.x + 1, self.y + y_direction)
+                and self.get_relative_index(b, 1, y_direction)
+                and self.color is not self.get_relative_index_color(
+                b, 1, y_direction)
         ):
             moves.append((self.x + 1, self.y + y_direction))
+        return moves
+
+    def get_possible_moves_position(self, b) -> Union[List[Tuple[int, int]], None]:
+        return [(x, y + 1) for x,y in self.get_possible_moves_index(b)]
 
 
 class Rook(Piece):
     def __str__(self) -> str:
         return "R"
+
 
 class Bishop(Piece):
     def __str__(self) -> str:
@@ -140,7 +155,7 @@ class Queen(Piece):
 
 
 # For type hints
-AllPieces = Union[King, Queen, Castle, Rook, Bishop, Pawn]
+AllPieces = Union[King, Queen, Castle, Rook, Bishop, Pawn, Piece]
 
 
 class Board:
@@ -149,7 +164,7 @@ class Board:
 
         self.board = [[None for _ in range(8)] for _ in range(8)]
         for piece in pieces:
-            self.set_piece(piece, piece.x, piece.y)
+            self.init_piece(piece, piece.x, piece.y)
 
     def _is_legal_move(self, x: Column, y: int):
         """Simple bounds check"""
@@ -162,13 +177,19 @@ class Board:
         if y < 0:
             raise ValueError(f"Invalid move: {y} < 0")
 
+    def init_piece(self, piece: Piece, x: Column, y: int):
+
+        self._is_legal_move(x, y)
+        self.board[int(x)][y] = piece
+
+
     def set_piece(self, piece: Piece, x: Column, y: int):
         # A1 correlates to index [0][0]
         # enums handle the A->0 conversio, but row conversion needs to be done
         # here since no enum
         index = y - 1
 
-        self._is_legal_move(x, index)
+        self._is_legal_move(x, y)
         self.board[int(x)][index] = piece
         piece.move_to(x, index)
 

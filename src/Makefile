@@ -5,3 +5,7 @@ clean:
 .PHONY fmt:
 fmt:
 	black .
+
+.PHONY pytest:
+test:
+	pytest-3
