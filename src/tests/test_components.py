@@ -1,13 +1,15 @@
+from typing import List
 from ..components import (
     Color,
     Piece,
     Column,
     Board,
     Pawn,
-    Castle,
+    Rook,
     Bishop,
     Queen,
     King,
+    Player,
 )
 
 
@@ -74,10 +76,29 @@ class TestPawn:
         assert (Column.B, 4) in moves
         assert 4 == len(moves)
 
+    def test_pawn_get_attacking_moves(self):
+        p1 = Pawn(Column.B, 2, Color.WHITE)
+        p2 = Pawn(Column.A, 3, Color.BLACK)
+        p3 = Pawn(Column.C, 3, Color.BLACK)
+        b = Board([p1, p2, p3])
+        moves = p1.get_attacking_moves_position(b)
+        assert (Column.A, 3) in moves
+        assert (Column.C, 3) in moves
+        assert 2 == len(moves)
 
-class TestCastle:
+    def test_pawn_do_not_attack_same_color(self):
+        p1 = Pawn(Column.B, 2, Color.WHITE)
+        p2 = Pawn(Column.A, 3, Color.WHITE)
+        p3 = Pawn(Column.C, 3, Color.WHITE)
+        b = Board([p1, p2, p3])
+        moves = p1.get_attacking_moves_position(b)
+        assert (Column.A, 3) not in moves
+        assert (Column.C, 3) not in moves
+
+
+class TestRook:
     def test_castle_surrounded_same_color(self):
-        c1 = Castle(Column.B, 2, Color.BLACK)
+        c1 = Rook(Column.B, 2, Color.BLACK)
         board = [
             c1,
             Pawn(Column.A, 2, Color.BLACK),
@@ -89,7 +110,7 @@ class TestCastle:
         assert not c1.get_possible_moves_position(b)
 
     def test_castle_up_down(self):
-        c1 = Castle(Column.B, 2, Color.BLACK)
+        c1 = Rook(Column.B, 2, Color.BLACK)
         board = [
             c1,
             Pawn(Column.A, 2, Color.BLACK),
@@ -107,7 +128,7 @@ class TestCastle:
         assert 7 == len(moves)
 
     def test_castle_left_right(self):
-        c1 = Castle(Column.B, 2, Color.BLACK)
+        c1 = Rook(Column.B, 2, Color.BLACK)
         board = [
             c1,
             Pawn(Column.B, 1, Color.BLACK),
@@ -125,7 +146,7 @@ class TestCastle:
         assert 7 == len(moves)
 
     def test_castle_surrounded_opposite_color(self):
-        c1 = Castle(Column.B, 2, Color.BLACK)
+        c1 = Rook(Column.B, 2, Color.BLACK)
         board = [
             c1,
             Pawn(Column.A, 2, Color.WHITE),
@@ -142,7 +163,7 @@ class TestCastle:
         assert 4 == len(moves)
 
     def test_castle_partially_blocked(self):
-        c1 = Castle(Column.D, 4, Color.BLACK)
+        c1 = Rook(Column.D, 4, Color.BLACK)
         board = [
             c1,
             Pawn(Column.D, 6, Color.BLACK),
@@ -265,9 +286,9 @@ class TestQueen:
 
 class TestKing:
     def test_king_surrounded_same_color(self):
-        q1 = King(Column.D, 4, Color.BLACK)
+        k1 = King(Column.D, 4, Color.BLACK)
         board = [
-            q1,
+            k1,
             Pawn(Column.C, 5, Color.BLACK),
             Pawn(Column.C, 3, Color.BLACK),
             Pawn(Column.E, 5, Color.BLACK),
@@ -278,12 +299,12 @@ class TestKing:
             Pawn(Column.C, 4, Color.BLACK),
         ]
         b = Board(board)
-        assert not q1.get_possible_moves_position(b)
+        white = Player(Color.WHITE, [])
+        assert not k1.get_possible_moves_position(b, white)
 
     def test_king_surrounded_diff_color(self):
-        q1 = King(Column.D, 4, Color.BLACK)
-        board = [
-            q1,
+        k1 = King(Column.D, 4, Color.BLACK)
+        player: List[Piece] = [
             Pawn(Column.C, 5, Color.WHITE),
             Pawn(Column.C, 3, Color.WHITE),
             Pawn(Column.E, 5, Color.WHITE),
@@ -293,18 +314,41 @@ class TestKing:
             Pawn(Column.E, 4, Color.WHITE),
             Pawn(Column.C, 4, Color.WHITE),
         ]
-        b = Board(board)
-        moves = q1.get_possible_moves_position(b)
+        white = Player(Color.WHITE, player)
+        player.append(k1)
+        b = Board(player)
+        moves = k1.get_possible_moves_position(b, white)
 
         assert (Column.C, 5) in moves
-        assert (Column.C, 4) in moves
+
+        # defended by D3
+        assert (Column.C, 4) not in moves
         assert (Column.C, 3) in moves
 
-        assert (Column.D, 5) in moves
+        # defended by C4 and E4
+        assert (Column.D, 5) not in moves
         assert (Column.D, 3) in moves
 
         assert (Column.E, 5) in moves
-        assert (Column.E, 4) in moves
+
+        # defended by D3
+        assert (Column.E, 4) not in moves
         assert (Column.E, 3) in moves
 
         assert 8 == len(moves)
+        # C4 and E4 are defended by D3, this test should fail
+
+
+class TestPlayer:
+    def test_player_is_defending(self):
+        board = [
+            Pawn(Column.C, 5, Color.WHITE),
+        ]
+        b = Board(board)
+        player = Player(Color.WHITE, board)
+        defended_positions = player.get_defended_positions(b)
+        assert (Column.B, 6) in defended_positions
+        assert (Column.D, 6) in defended_positions
+        assert player.is_defending_position(b, Column.B, 6)
+        assert player.is_defending_position(b, Column.D, 6)
+        assert 2 == len(defended_positions)
