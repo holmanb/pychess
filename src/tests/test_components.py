@@ -1,4 +1,4 @@
-from ..components import Color, Piece, Column, Board, Pawn, Castle, Bishop
+from ..components import Color, Piece, Column, Board, Pawn, Castle, Bishop, Queen
 
 
 class TestPieces:
@@ -203,3 +203,51 @@ class TestBishop:
         assert (Column.G, 1) in moves
 
         assert 13 == len(moves)
+
+class TestQueen:
+    def test_queen_surrounded_same_color(self):
+        q1 = Queen(Column.D, 4, Color.BLACK)
+        board = [
+            q1,
+            Pawn(Column.C, 5, Color.BLACK),
+            Pawn(Column.C, 3, Color.BLACK),
+            Pawn(Column.E, 5, Color.BLACK),
+            Pawn(Column.E, 3, Color.BLACK),
+
+            Pawn(Column.D, 5, Color.BLACK),
+            Pawn(Column.D, 3, Color.BLACK),
+            Pawn(Column.E, 4, Color.BLACK),
+            Pawn(Column.C, 4, Color.BLACK),
+        ]
+        b = Board(board)
+        assert not q1.get_possible_moves_position(b)
+
+    def test_queen_surrounded_diff_color(self):
+        q1 = Queen(Column.D, 4, Color.BLACK)
+        board = [
+            q1,
+            Pawn(Column.C, 5, Color.WHITE),
+            Pawn(Column.C, 3, Color.WHITE),
+            Pawn(Column.E, 5, Color.WHITE),
+            Pawn(Column.E, 3, Color.WHITE),
+
+            Pawn(Column.D, 5, Color.WHITE),
+            Pawn(Column.D, 3, Color.WHITE),
+            Pawn(Column.E, 4, Color.WHITE),
+            Pawn(Column.C, 4, Color.WHITE),
+        ]
+        b = Board(board)
+        moves = q1.get_possible_moves_position(b)
+
+        assert (Column.C, 5) in moves
+        assert (Column.C, 4) in moves
+        assert (Column.C, 3) in moves
+
+        assert (Column.D, 5) in moves
+        assert (Column.D, 3) in moves
+
+        assert (Column.E, 5) in moves
+        assert (Column.E, 4) in moves
+        assert (Column.E, 3) in moves
+
+        assert 8 == len(moves)

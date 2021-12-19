@@ -252,12 +252,9 @@ class Queen(Piece):
         return "Q"
 
     def get_possible_moves_index(self, b) -> List:
-        return (
-            perpendicular(b, self.x, self.y, self.color).extend(
-                diagonal(b, self.x, self.y, self.color)
-            )
-            or []
-        )
+        out = perpendicular(b, self.x, self.y, self.color)
+        out.extend(diagonal(b, self.x, self.y, self.color))
+        return out
 
 
 # For type hints
