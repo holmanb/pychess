@@ -1,3 +1,6 @@
+.PHONY all:
+	./game.py
+
 .PHONY clean:
 clean:
 	find -name __pycache__ -type d -exec rm -rf {} +
