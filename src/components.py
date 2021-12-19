@@ -166,84 +166,60 @@ class Rook(Piece):
         return []
 
 
-def diagonal(self, b, x, y) -> List:
-    return []
+def check_line_for_pieces(
+    b, x: int, y: int, color: Color, x_mult: int = 0, y_mult: int = 0
+):
+    """Return valid moves in a straight line. Multiplier may be used to
+    manipulate application of iterator to index values
+    """
+    o = []
+    for i in range(1, 8):
+        index_x = x + i * x_mult
+        index_y = y + i * y_mult
+        if is_index_valid(index_x, index_y):
+            piece = get_index(b, index_x, index_y)
+            if piece:
+                # blocked by own color
+                if piece.color == color:
+                    break
+                # attack
+                else:
+                    o.append((index_x, index_y))
+                    break
+            else:
+                o.append((index_x, index_y))
+        else:
+            break
+
+    return o
+
+
+def diagonal(b, x: int, y: int, color) -> List:
+    out = []
+
+    # up right
+    out.extend(check_line_for_pieces(b, x, y, color, x_mult=1, y_mult=1))
+    # down right
+    out.extend(check_line_for_pieces(b, x, y, color, x_mult=1, y_mult=-1))
+    # down left
+    out.extend(check_line_for_pieces(b, x, y, color, x_mult=-1, y_mult=-1))
+    # up left
+    out.extend(check_line_for_pieces(b, x, y, color, x_mult=-1, y_mult=1))
+    return out
 
 
 def perpendicular(b, x: int, y: int, color: Color) -> List:
+
     out = []
 
     # up
-    for i in range(1, 8):
-        if is_index_valid(x, y + i):
-            piece = get_index(b, x, y + i)
-            if piece:
-                # blocked by own color
-                if piece.color == color:
-                    break
-                # attack
-                else:
-                    out.append((x, y + i))
-                    break
-            else:
-                out.append((x, y + i))
-        else:
-            break
-
+    out.extend(check_line_for_pieces(b, x, y, color, y_mult=1))
     # down
-    for i in range(1, 8):
-        if is_index_valid(x, y - i):
-            piece = get_index(b, x, y - i)
-            if piece:
-                # blocked by own color
-                if piece.color == color:
-                    break
-                # attack
-                else:
-                    out.append((x, y - i))
-                    break
-            else:
-                out.append((x, y - i))
-        else:
-            break
-
-    # right
-    for i in range(1, 8):
-        if is_index_valid(x + i, y):
-            piece = get_index(b, x + i, y)
-            if piece:
-                # blocked by own color
-                if piece.color == color:
-                    break
-                # attack
-                else:
-                    out.append((x + i, y))
-                    break
-            else:
-                out.append((x + i, y))
-        else:
-            break
-
+    out.extend(check_line_for_pieces(b, x, y, color, y_mult=-1))
     # left
-    for i in range(1, 8):
-        if is_index_valid(x - i, y):
-            print("valid: {} {}".format(x - i, y))
-            piece = get_index(b, x - i, y)
-            if piece:
-                # blocked by own color
-                if piece.color == color:
-                    print("break: blocked")
-                    break
-                # attack
-                else:
-                    out.append((x - i, y))
-                    print("break: attack")
-                    break
-            else:
-                out.append((x - i, y))
-        else:
-            break
-
+    out.extend(check_line_for_pieces(b, x, y, color, x_mult=-1))
+    # right
+    out.extend(check_line_for_pieces(b, x, y, color, x_mult=1))
     return out
 
 
@@ -276,9 +252,12 @@ class Queen(Piece):
         return "Q"
 
     def get_possible_moves_index(self, b) -> List:
-        return perpendicular(
-            b, self.x, self.y, self.color
-        ).extend(diagonal(b, self.x, self.y, self.color)) or []
+        return (
+            perpendicular(b, self.x, self.y, self.color).extend(
+                diagonal(b, self.x, self.y, self.color)
+            )
+            or []
+        )
 
 
 # For type hints

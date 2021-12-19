@@ -1,4 +1,4 @@
-from ..components import Color, Piece, Column, Board, Pawn, Castle
+from ..components import Color, Piece, Column, Board, Pawn, Castle, Bishop
 
 
 class TestPieces:
@@ -146,3 +146,60 @@ class TestCastle:
         assert (Column.C, 4) in moves
         assert (Column.E, 4) in moves
         assert 4 == len(moves)
+
+
+class TestBishop:
+    def test_bishop_surrounded_same_color(self):
+        b1 = Bishop(Column.D, 4, Color.BLACK)
+        board = [
+            b1,
+            Pawn(Column.C, 5, Color.BLACK),
+            Pawn(Column.C, 3, Color.BLACK),
+            Pawn(Column.E, 5, Color.BLACK),
+            Pawn(Column.E, 3, Color.BLACK),
+        ]
+        b = Board(board)
+        assert not b1.get_possible_moves_position(b)
+
+    def test_bishop_surrounded_diff_color(self):
+        b1 = Bishop(Column.D, 4, Color.BLACK)
+        board = [
+            b1,
+            Pawn(Column.C, 5, Color.WHITE),
+            Pawn(Column.C, 3, Color.WHITE),
+            Pawn(Column.E, 5, Color.WHITE),
+            Pawn(Column.E, 3, Color.WHITE),
+        ]
+        b = Board(board)
+        moves = b1.get_possible_moves_position(b)
+        assert (Column.C, 5) in moves
+        assert (Column.C, 3) in moves
+        assert (Column.E, 3) in moves
+        assert (Column.E, 5) in moves
+        assert 4 == len(moves)
+
+    def bishop_unhindered(self):
+        b1 = Bishop(Column.D, 4, Color.BLACK)
+        board = [
+            b1,
+        ]
+        b = Board(board)
+        moves = b1.get_possible_moves_position(b)
+        assert (Column.E, 5) in moves
+        assert (Column.D, 6) in moves
+        assert (Column.F, 7) in moves
+        assert (Column.G, 8) in moves
+
+        assert (Column.C, 5) in moves
+        assert (Column.B, 6) in moves
+        assert (Column.A, 7) in moves
+
+        assert (Column.C, 3) in moves
+        assert (Column.B, 2) in moves
+        assert (Column.A, 1) in moves
+
+        assert (Column.E, 3) in moves
+        assert (Column.F, 2) in moves
+        assert (Column.G, 1) in moves
+
+        assert 13 == len(moves)
