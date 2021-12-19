@@ -1,10 +1,10 @@
 .PHONY clean:
 clean:
-	rm -rf __pycache__
+	find -name __pycache__ -type d -exec rm -rf {} +
 
 .PHONY fmt:
 fmt:
-	black .
+	black --line-length 79 .
 
 .PHONY pytest:
 test:

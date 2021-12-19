@@ -1,5 +1,5 @@
 from enum import Enum, IntEnum
-from typing import Union, List, Any, Tuple
+from typing import Union, List, Any
 
 
 class Column(IntEnum):
@@ -19,6 +19,14 @@ class Column(IntEnum):
     F = 5
     G = 6
     H = 7
+
+
+def is_index_valid(x: int, y: int) -> bool:
+    return x >= 0 and x < 8 and y >= 0 and y < 8
+
+
+def get_index(b, x: int, y: int):
+    return b.board[x][y]
 
 
 class Color(Enum):
@@ -47,42 +55,54 @@ class Piece:
     ```
     """
 
-    def get_possible_moves_index(self) -> List:
+    def get_possible_moves_index(self, _b) -> List:
         raise NotImplementedError()
 
     def __str__(self) -> str:
         """For testing"""
         return "X"
 
-    @classmethod
-    def is_index_valid(cls, x: int, y: int) -> bool:
-        return x >= 0 and x < 8 and y >= 0 and y < 8
+    def is_relative_index_valid(self, x: int, y: int) -> bool:
+        return is_index_valid(self.x + x, self.y + y)
 
     @classmethod
     def index_valid_or_raise(cls, x: int, y: int):
-        if not Piece.is_index_valid(x, y):
+        if not is_index_valid(x, y):
             raise ValueError(f"invalid index [{x}][{y}]")
+
+    def relative_index_valid_or_raise(self, x: int, y: int):
+        self.index_valid_or_raise(x, y)
 
     def move_to_index(self, x: int, y: int) -> None:
         """Takes index values to move to"""
-        if not Piece.is_index_valid(x, y):
+        if not is_index_valid(x, y):
             ValueError("invalid x value")
         self.x = x
         self.y = y
+
+    def move_to_relative_index(self, x: int, y: int) -> None:
+        self.move_to_index(self.x + x, self.y + y)
 
     def move_to_position(self, x: Column, y: int) -> None:
         self.index_valid_or_raise(x, y - 1)
         self.move_to_index(x, y - 1)
 
+    def move_to_relative_position(self, x: Column, y: int) -> None:
+        self.move_to_relative_position(Column(self.x + x), self.y + y)
+
     def get_relative_index(self, b, x: int, y: int):
-        return b.board[self.x + x][self.y + y]
+        return get_index(b, self.x + x, self.y + y)
 
     def get_relative_index_color(self, b, x: int, y: int):
         piece = self.get_relative_index(b, x, y)
         if piece:
             return piece.color
 
+    def get_possible_moves_position(self, b) -> List:
+        return [(x, y + 1) for x, y in self.get_possible_moves_index(b)]
 
+
+# TODO: en passante, promotion
 class Pawn(Piece):
     def __str__(self) -> str:
         return "P"
@@ -100,16 +120,18 @@ class Pawn(Piece):
 
         # attack
         if (
-            Piece.is_index_valid(self.x - 1, self.y + y_direction)
+            is_index_valid(self.x - 1, self.y + y_direction)
             and self.get_relative_index(b, -1, y_direction)
-            and self.color is not self.get_relative_index_color(b, -1, y_direction)
+            and self.color
+            is not self.get_relative_index_color(b, -1, y_direction)
         ):
             moves.append((self.x - 1, self.y + y_direction))
         # attack
         if (
-            Piece.is_index_valid(self.x + 1, self.y + y_direction)
+            is_index_valid(self.x + 1, self.y + y_direction)
             and self.get_relative_index(b, 1, y_direction)
-            and self.color is not self.get_relative_index_color(b, 1, y_direction)
+            and self.color
+            is not self.get_relative_index_color(b, 1, y_direction)
         ):
             moves.append((self.x + 1, self.y + y_direction))
 
@@ -131,9 +153,6 @@ class Pawn(Piece):
 
         return moves
 
-    def get_possible_moves_position(self, b) -> List:
-        return [(x, y + 1) for x, y in self.get_possible_moves_index(b)]
-
     def promote(self):
         # phoenix time
         pass
@@ -143,31 +162,105 @@ class Rook(Piece):
     def __str__(self) -> str:
         return "R"
 
-
-class Diagonal:
-    def diagonal(self, b) -> List:
+    def get_possible_moves_position(self, b) -> List:
         return []
 
 
-class Perpendicular:
-    def perpendicular(self, b) -> List:
-        return []
+def diagonal(self, b, x, y) -> List:
+    return []
 
 
-class Bishop(Piece, Diagonal):
+def perpendicular(b, x: int, y: int, color: Color) -> List:
+    out = []
+
+    # up
+    for i in range(1, 8):
+        if is_index_valid(x, y + i):
+            piece = get_index(b, x, y + i)
+            if piece:
+                # blocked by own color
+                if piece.color == color:
+                    break
+                # attack
+                else:
+                    out.append((x, y + i))
+                    break
+            else:
+                out.append((x, y + i))
+        else:
+            break
+
+    # down
+    for i in range(1, 8):
+        if is_index_valid(x, y - i):
+            piece = get_index(b, x, y - i)
+            if piece:
+                # blocked by own color
+                if piece.color == color:
+                    break
+                # attack
+                else:
+                    out.append((x, y - i))
+                    break
+            else:
+                out.append((x, y - i))
+        else:
+            break
+
+    # right
+    for i in range(1, 8):
+        if is_index_valid(x + i, y):
+            piece = get_index(b, x + i, y)
+            if piece:
+                # blocked by own color
+                if piece.color == color:
+                    break
+                # attack
+                else:
+                    out.append((x + i, y))
+                    break
+            else:
+                out.append((x + i, y))
+        else:
+            break
+
+    # left
+    for i in range(1, 8):
+        if is_index_valid(x - i, y):
+            print("valid: {} {}".format(x - i, y))
+            piece = get_index(b, x - i, y)
+            if piece:
+                # blocked by own color
+                if piece.color == color:
+                    print("break: blocked")
+                    break
+                # attack
+                else:
+                    out.append((x - i, y))
+                    print("break: attack")
+                    break
+            else:
+                out.append((x - i, y))
+        else:
+            break
+
+    return out
+
+
+class Bishop(Piece):
     def __str__(self) -> str:
         return "B"
 
-    def get_possible_moves_position(self, b) -> List:
-        return self.diagonal(b)
+    def get_possible_moves_index(self, b) -> List:
+        return diagonal(b, self.x, self.y, self.color)
 
 
-class Castle(Piece, Perpendicular):
+class Castle(Piece):
     def __str__(self) -> str:
         return "C"
 
-    def get_possible_moves_position(self, b) -> List:
-        return self.perpendicular(b)
+    def get_possible_moves_index(self, b) -> List:
+        return perpendicular(b, self.x, self.y, self.color)
 
 
 class King(Piece):
@@ -178,12 +271,14 @@ class King(Piece):
         pass
 
 
-class Queen(Piece, Perpendicular, Diagonal):
+class Queen(Piece):
     def __str__(self) -> str:
         return "Q"
 
-    def get_possible_moves_position(self, b) -> List:
-        return self.perpendicular(b).extend(self.diagonal(b))
+    def get_possible_moves_index(self, b) -> List:
+        return perpendicular(
+            b, self.x, self.y, self.color
+        ).extend(diagonal(b, self.x, self.y, self.color)) or []
 
 
 # For type hints
@@ -195,7 +290,7 @@ class Board:
 
         self.board = [[None for _ in range(8)] for _ in range(8)]
         for piece in pieces:
-            self.init_piece(piece, piece.x, piece.y)
+            self.init_piece(piece, Column(piece.x), piece.y)
 
     def _is_legal_move(self, x: Column, y: int):
         """Simple bounds check"""
@@ -260,7 +355,9 @@ class Board:
         string = self.to_string(color=color)
         arr = []
         for i, line in enumerate(string.split("\n")):
-            arr.append("{} {}".format(self.to_color(str(8 - i) + "|", "BLUE"), line))
+            arr.append(
+                "{} {}".format(self.to_color(str(8 - i) + "|", "BLUE"), line)
+            )
         arr.append(self.to_color(" +----------------", "BLUE"))
         arr.append(self.to_color("   A B C D E F G H", "BLUE"))
         return "\n".join(arr)

@@ -1,4 +1,4 @@
-from ..components import Color, Piece, Column, Board, Pawn
+from ..components import Color, Piece, Column, Board, Pawn, Castle
 
 
 class TestPieces:
@@ -52,7 +52,7 @@ class TestPawn:
         b = Board([p1, p2, p3, p4])
         assert [(Column.C, 3)] == p1.get_possible_moves_position(b)
 
-    def test_pawn_get_possible_moves_three(self):
+    def test_pawn_get_possible_moves_four(self):
         p1 = Pawn(Column.B, 2, Color.WHITE)
         p2 = Pawn(Column.A, 3, Color.BLACK)
         p3 = Pawn(Column.C, 3, Color.BLACK)
@@ -60,3 +60,89 @@ class TestPawn:
         assert (Column.A, 3) in p1.get_possible_moves_position(b)
         assert (Column.B, 3) in p1.get_possible_moves_position(b)
         assert (Column.C, 3) in p1.get_possible_moves_position(b)
+        assert (Column.B, 4) in p1.get_possible_moves_position(b)
+        assert 4 == len(p1.get_possible_moves_position(b))
+
+
+class TestCastle:
+    def test_castle_surrounded_same_color(self):
+        c1 = Castle(Column.B, 2, Color.BLACK)
+        board = [
+            c1,
+            Pawn(Column.A, 2, Color.BLACK),
+            Pawn(Column.C, 2, Color.BLACK),
+            Pawn(Column.B, 1, Color.BLACK),
+            Pawn(Column.B, 3, Color.BLACK),
+        ]
+        b = Board(board)
+        assert not c1.get_possible_moves_position(b)
+
+    def test_castle_up_down(self):
+        c1 = Castle(Column.B, 2, Color.BLACK)
+        board = [
+            c1,
+            Pawn(Column.A, 2, Color.BLACK),
+            Pawn(Column.C, 2, Color.BLACK),
+        ]
+        b = Board(board)
+        moves = c1.get_possible_moves_position(b)
+        assert (Column.B, 1) in moves
+        assert (Column.B, 3) in moves
+        assert (Column.B, 4) in moves
+        assert (Column.B, 5) in moves
+        assert (Column.B, 6) in moves
+        assert (Column.B, 7) in moves
+        assert (Column.B, 8) in moves
+        assert 7 == len(moves)
+
+    def test_castle_left_right(self):
+        c1 = Castle(Column.B, 2, Color.BLACK)
+        board = [
+            c1,
+            Pawn(Column.B, 1, Color.BLACK),
+            Pawn(Column.B, 3, Color.BLACK),
+        ]
+        b = Board(board)
+        moves = c1.get_possible_moves_position(b)
+        assert (Column.A, 2) in moves
+        assert (Column.C, 2) in moves
+        assert (Column.D, 2) in moves
+        assert (Column.E, 2) in moves
+        assert (Column.F, 2) in moves
+        assert (Column.G, 2) in moves
+        assert (Column.H, 2) in moves
+        assert 7 == len(moves)
+
+    def test_castle_surrounded_opposite_color(self):
+        c1 = Castle(Column.B, 2, Color.BLACK)
+        board = [
+            c1,
+            Pawn(Column.A, 2, Color.WHITE),
+            Pawn(Column.C, 2, Color.WHITE),
+            Pawn(Column.B, 1, Color.WHITE),
+            Pawn(Column.B, 3, Color.WHITE),
+        ]
+        b = Board(board)
+        moves = c1.get_possible_moves_position(b)
+        assert (Column.A, 2) in moves
+        assert (Column.C, 2) in moves
+        assert (Column.B, 1) in moves
+        assert (Column.B, 3) in moves
+        assert 4 == len(moves)
+
+    def test_castle_partially_blocked(self):
+        c1 = Castle(Column.D, 4, Color.BLACK)
+        board = [
+            c1,
+            Pawn(Column.D, 6, Color.BLACK),
+            Pawn(Column.D, 2, Color.BLACK),
+            Pawn(Column.B, 4, Color.BLACK),
+            Pawn(Column.F, 4, Color.BLACK),
+        ]
+        b = Board(board)
+        moves = c1.get_possible_moves_position(b)
+        assert (Column.D, 3) in moves
+        assert (Column.D, 5) in moves
+        assert (Column.C, 4) in moves
+        assert (Column.E, 4) in moves
+        assert 4 == len(moves)
