@@ -127,7 +127,8 @@ class Piece:
 
     def get_defended_moves_position(self, b, *_args) -> List[Index]:
         return list(
-            map(partial(index_to_position, b), self.get_defended_moves_index))
+            map(partial(index_to_position, b), self.get_defended_moves_index)
+        )
 
     def __str__(self) -> str:
         """For testing"""
@@ -263,8 +264,33 @@ class Knight(Piece):
     def __str__(self) -> str:
         return "R"
 
-    def get_possible_moves_index(self, b) -> List:
-        return []
+    def get_potentials(self) -> List[Index]:
+        return [
+            Index(self.index.x + 1, self.index.y + 2),
+            Index(self.index.x - 1, self.index.y + 2),
+            Index(self.index.x - 1, self.index.y - 2),
+            Index(self.index.x + 1, self.index.y - 2),
+            Index(self.index.x + 2, self.index.y + 1),
+            Index(self.index.x - 2, self.index.y + 1),
+            Index(self.index.x - 2, self.index.y - 1),
+            Index(self.index.x + 2, self.index.y - 1),
+        ]
+
+    def get_possible_moves_index(self, b) -> List[Index]:
+        out = []
+        for index in self.get_potentials():
+            if is_index_valid(index):
+                value = get_index(b, index)
+                if self.color != value.color:
+                    out.append(index)
+        return out
+
+    def get_defended_moves_index(self, b, *_args) -> List[Index]:
+        out = []
+        for index in self.get_potentials():
+            if is_index_valid(index):
+                out.append(index)
+        return out
 
 
 def get_indices_in_line(
@@ -445,7 +471,9 @@ class Bishop(Piece):
         return diagonal(b, self.index, self.color)
 
     def get_defended_moves_index(self, b, *args) -> List[Index]:
-        return diagonal(b, self.index, self.color, index_type=IndexType.DEFENDED, *args)
+        return diagonal(
+            b, self.index, self.color, index_type=IndexType.DEFENDED, *args
+        )
 
 
 class Rook(Piece):
@@ -517,8 +545,12 @@ class Queen(Piece):
         return out
 
     def get_defended_moves_index(self, b, *_args) -> List[Index]:
-        out = perpendicular(b, self.index, self.color, index_type=IndexType.DEFENDED)
-        out.extend(diagonal(b, self.index, self.color, index_type=IndexType.DEFENDED))
+        out = perpendicular(
+            b, self.index, self.color, index_type=IndexType.DEFENDED
+        )
+        out.extend(
+            diagonal(b, self.index, self.color, index_type=IndexType.DEFENDED)
+        )
         return out
 
 

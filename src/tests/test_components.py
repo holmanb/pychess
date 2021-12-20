@@ -10,6 +10,7 @@ from ..components import (
     Pawn,
     Rook,
     Bishop,
+    Knight,
     Queen,
     King,
     Player,
@@ -222,10 +223,11 @@ class TestRook:
         b = Board(pieces)
         indices = r1.get_defended_moves_index(b)
         for move in [
-                Position(Column.D, 7),
-                Position(Column.D, 5),
-                Position(Column.C, 6),
-                Position(Column.E, 6)]:
+            Position(Column.D, 7),
+            Position(Column.D, 5),
+            Position(Column.C, 6),
+            Position(Column.E, 6),
+        ]:
             assert position_to_index(move) in indices
         assert 4 == len(indices)
 
@@ -298,12 +300,88 @@ class TestBishop:
         b = Board(pieces)
         indices = r1.get_defended_moves_index(b)
         for move in [
-                Position(Column.E, 7),
-                Position(Column.E, 5),
-                Position(Column.C, 7),
-                Position(Column.C, 5)]:
+            Position(Column.E, 7),
+            Position(Column.E, 5),
+            Position(Column.C, 7),
+            Position(Column.C, 5),
+        ]:
             assert position_to_index(move) in indices
         assert 4 == len(indices)
+
+
+class TestKing:
+    def test_bishop_get_defended_moves(self):
+        k1 = Knight(Column.E, 4, Color.BLACK)
+        pieces = [
+            k1,
+            Knight(Column.D, 6, Color.BLACK),
+            Knight(Column.D, 2, Color.BLACK),
+            Knight(Column.F, 6, Color.BLACK),
+            Knight(Column.F, 2, Color.BLACK),
+            Knight(Column.C, 5, Color.BLACK),
+            Knight(Column.C, 3, Color.BLACK),
+            Knight(Column.G, 5, Color.BLACK),
+            Knight(Column.G, 3, Color.BLACK),
+        ]
+        b = Board(pieces)
+        indices = k1.get_defended_moves_index(b)
+        for move in [
+            Position(Column.D, 6),
+            Position(Column.D, 2),
+            Position(Column.F, 6),
+            Position(Column.F, 2),
+            Position(Column.C, 5),
+            Position(Column.C, 3),
+            Position(Column.G, 5),
+            Position(Column.G, 3),
+        ]:
+            assert position_to_index(move) in indices
+        assert 8 == len(indices)
+
+    def test_bishop_get_attacking_moves(self):
+        k1 = Knight(Column.E, 4, Color.WHITE)
+        pieces = [
+            k1,
+            Knight(Column.D, 6, Color.BLACK),
+            Knight(Column.D, 2, Color.BLACK),
+            Knight(Column.F, 6, Color.BLACK),
+            Knight(Column.F, 2, Color.BLACK),
+            Knight(Column.C, 5, Color.BLACK),
+            Knight(Column.C, 3, Color.BLACK),
+            Knight(Column.G, 5, Color.BLACK),
+            Knight(Column.G, 3, Color.BLACK),
+        ]
+        b = Board(pieces)
+        indices = k1.get_defended_moves_index(b)
+        for move in [
+            Position(Column.D, 6),
+            Position(Column.D, 2),
+            Position(Column.F, 6),
+            Position(Column.F, 2),
+            Position(Column.C, 5),
+            Position(Column.C, 3),
+            Position(Column.G, 5),
+            Position(Column.G, 3),
+        ]:
+            assert position_to_index(move) in indices
+        assert 8 == len(indices)
+
+    def test_bishop_get_possible_moves(self):
+        k1 = Knight(Column.E, 4, Color.BLACK)
+        pieces = [
+            k1,
+            Knight(Column.D, 6, Color.BLACK),
+            Knight(Column.D, 2, Color.BLACK),
+            Knight(Column.F, 6, Color.BLACK),
+            Knight(Column.F, 2, Color.BLACK),
+            Knight(Column.C, 5, Color.BLACK),
+            Knight(Column.C, 3, Color.BLACK),
+            Knight(Column.G, 5, Color.BLACK),
+            Knight(Column.G, 3, Color.BLACK),
+        ]
+        b = Board(pieces)
+        indices = k1.get_possible_moves_position(b)
+        assert not indices
 
 
 class TestQueen:
@@ -368,14 +446,15 @@ class TestQueen:
         b = Board(pieces)
         indices = q1.get_defended_moves_index(b)
         for move in [
-                Position(Column.E, 7),
-                Position(Column.E, 6),
-                Position(Column.E, 5),
-                Position(Column.C, 7),
-                Position(Column.C, 6),
-                Position(Column.C, 5),
-                Position(Column.D, 7),
-                Position(Column.D, 5)]:
+            Position(Column.E, 7),
+            Position(Column.E, 6),
+            Position(Column.E, 5),
+            Position(Column.C, 7),
+            Position(Column.C, 6),
+            Position(Column.C, 5),
+            Position(Column.D, 7),
+            Position(Column.D, 5),
+        ]:
             assert position_to_index(move) in indices
         assert 8 == len(indices)
 
@@ -458,14 +537,15 @@ class TestKing:
         p = Player(Color.WHITE, [])
         indices = k1.get_defended_moves_index(b, p)
         for move in [
-                Position(Column.E, 7),
-                Position(Column.E, 6),
-                Position(Column.E, 5),
-                Position(Column.C, 7),
-                Position(Column.C, 6),
-                Position(Column.C, 5),
-                Position(Column.D, 7),
-                Position(Column.D, 5)]:
+            Position(Column.E, 7),
+            Position(Column.E, 6),
+            Position(Column.E, 5),
+            Position(Column.C, 7),
+            Position(Column.C, 6),
+            Position(Column.C, 5),
+            Position(Column.D, 7),
+            Position(Column.D, 5),
+        ]:
             assert position_to_index(move) in indices
         assert 8 == len(indices)
 
