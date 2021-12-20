@@ -11,4 +11,4 @@ fmt:
 
 .PHONY pytest:
 test:
-	pytest-3
+	python3.10 -m pytest tests
