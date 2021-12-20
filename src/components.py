@@ -479,30 +479,7 @@ class King(Piece):
             raise ValueError("Need opposite player to verify checkness")
         out = perpendicular(board, self.index, self.color, max_depth=2)
         out.extend(diagonal(board, self.index, self.color, max_depth=2))
-        print("total king moves: {}".format(out))
-        for i, move in enumerate(out):
-            print("king's moves: ({})".format(set(out)))
-            print(
-                "threatened positions: ({})".format(
-                    set(player.get_defended_positions(board))
-                )
-            )
-            print(
-                "set difference: ({})".format(
-                    set(out) - set(player.get_defended_indices(board))
-                )
-            )
-            if player.is_defending_index(board, move):
-                print("{}: index {} under attack, removing".format(i, move))
-                out.remove(move)
-            else:
-                print("{}: index not {} under attack, leaving".format(i, move))
-            if move == Index(4, 4):
-                print(
-                    "WOWOWOWOWOOWOW-----------------------------------------------"
-                )
-
-        return out
+        return list(set(out) - set(player.get_defended_indices(board)))
 
     def get_defended_moves_index(self, board, *args) -> List[Index]:
         player = args[0]
@@ -666,9 +643,9 @@ class Player:
                 out.append(move)
         return list(set(out))
 
-    def get_defended_positions(self, b: Board) -> List[Index]:
+    def get_defended_positions(self, b: Board) -> List[Position]:
         return [
-            Index(Column(x), y + 1) for x, y in self.get_defended_indices(b)
+            Position(Column(x), y + 1) for x, y in self.get_defended_indices(b)
         ]
 
     def print_defended_positions(self, b: Board) -> None:

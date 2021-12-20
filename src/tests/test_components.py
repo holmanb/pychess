@@ -344,8 +344,7 @@ class TestKing:
         assert (Column.E, 4) not in moves
         assert (Column.E, 3) in moves
 
-        assert 8 == len(moves)
-        # C4 and E4 are defended by D3, this test should fail
+        assert 5 == len(moves)
 
 
 class TestPlayer:
