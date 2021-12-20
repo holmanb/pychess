@@ -43,11 +43,11 @@ class Color(Enum):
 
 
 def index_to_position(index: Index) -> Position:
-    return Position(Column(index.x), index.y - 1)
+    return Position(Column(index.x), index.y + 1)
 
 
 def position_to_index(position: Position) -> Index:
-    return Index(int(position.x), position.y + 1)
+    return Index(int(position.x), position.y - 1)
 
 
 def is_index_valid(index: Index) -> bool:
@@ -113,16 +113,21 @@ class Piece:
     def get_position(self):
         return index_to_position(self.index)
 
-    def get_possible_moves_index(self, b) -> List[Index]:
+    def get_possible_moves_index(self, _b) -> List[Index]:
         """Get list of available moves by this piece"""
         raise NotImplementedError()
 
-    def get_attacking_moves_index(self, b) -> List[Index]:
+    def get_attacking_moves_index(self, _b) -> List[Index]:
         """Get list of attacking moves by this piece"""
         raise NotImplementedError()
 
     def get_defended_moves_index(self, b, *_args) -> List[Index]:
+        """Indices that the king may not move into"""
         raise NotImplementedError()
+
+    def get_defended_moves_position(self, b, *_args) -> List[Index]:
+        return list(
+            map(partial(index_to_position, b), self.get_defended_moves_index))
 
     def __str__(self) -> str:
         """For testing"""
@@ -297,11 +302,10 @@ def get_indices_in_line(
 
                     if index_type == IndexType.DEFENDED:
                         o.append(derived_index)
-                    break
                 # attack
                 else:
                     o.append(derived_index)
-                    break
+                break
             else:
                 o.append(derived_index)
         else:
@@ -441,7 +445,7 @@ class Bishop(Piece):
         return diagonal(b, self.index, self.color)
 
     def get_defended_moves_index(self, b, *args) -> List[Index]:
-        return diagonal(b, self.index, self.color, IndexType.DEFENDED, *args)
+        return diagonal(b, self.index, self.color, index_type=IndexType.DEFENDED, *args)
 
 
 class Rook(Piece):
@@ -453,7 +457,7 @@ class Rook(Piece):
 
     def get_defended_moves_index(self, b, *args) -> List[Index]:
         return perpendicular(
-            b, self.index, self.color, IndexType.DEFENDED, *args
+            b, self.index, self.color, *args, index_type=IndexType.DEFENDED
         )
 
 
@@ -481,8 +485,7 @@ class King(Piece):
         out.extend(diagonal(board, self.index, self.color, max_depth=2))
         return list(set(out) - set(player.get_defended_indices(board)))
 
-    def get_defended_moves_index(self, board, *args) -> List[Index]:
-        player = args[0]
+    def get_defended_moves_index(self, board, player) -> List[Index]:
         if player.color == self.color:
             raise ValueError("Need opposite player to verify checkness")
         out = perpendicular(
@@ -514,8 +517,8 @@ class Queen(Piece):
         return out
 
     def get_defended_moves_index(self, b, *_args) -> List[Index]:
-        out = perpendicular(b, self.index, self.color, IndexType.DEFENDED)
-        out.extend(diagonal(b, self.index, self.color, IndexType.DEFENDED))
+        out = perpendicular(b, self.index, self.color, index_type=IndexType.DEFENDED)
+        out.extend(diagonal(b, self.index, self.color, index_type=IndexType.DEFENDED))
         return out
 
 
@@ -533,6 +536,14 @@ class Board:
     def init_piece(self, piece, index: Index):
         index_valid_or_raise(index)
         self.board[piece.index.x][piece.index.y] = piece
+
+    def validate_pieces(self, pieces: List):
+        if not isinstance(pieces, List):
+            raise TypeError("Invalid type: {}".format(type(pieces)))
+
+        for piece in pieces:
+            if not isinstance(pieces, Piece):
+                raise TypeError("Invalid type: {}".format(type(pieces)))
 
     def is_index_under_attack(self, player, index: Index):
         """Attacking indexes are ones which a king may not move into"""
