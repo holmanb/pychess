@@ -104,6 +104,7 @@ class Piece:
     "position" in the function name and have one "Column" type hinted parameter
     ```
     """
+    value = None
 
     def __init__(self, x: Column, y: int, color: Color):
         self.index = Index(x, y - 1)
@@ -178,8 +179,9 @@ class Piece:
 
 # TODO: en passante, promotion
 class Pawn(Piece):
+    value = 1
     def __str__(self) -> str:
-        return "P"
+        return "♙" if self.color == Color.WHITE else "♟︎"
 
     def get_attacking_moves_index(self, b, *_args) -> List:
         """Attack left or right"""
@@ -261,8 +263,10 @@ class Pawn(Piece):
 
 
 class Knight(Piece):
+    value = 3
+
     def __str__(self) -> str:
-        return "R"
+        return "♘" if self.color == Color.WHITE else "♞"
 
     def get_potentials(self) -> List[Index]:
         return [
@@ -464,8 +468,9 @@ def perpendicular(
 
 
 class Bishop(Piece):
+    value = 3
     def __str__(self) -> str:
-        return "B"
+        return "♗" if self.color == Color.WHITE else "♝"
 
     def get_possible_moves_index(self, b) -> List[Index]:
         return diagonal(b, self.index, self.color)
@@ -477,8 +482,9 @@ class Bishop(Piece):
 
 
 class Rook(Piece):
+    value = 5
     def __str__(self) -> str:
-        return "C"
+        return "♖" if self.color == Color.WHITE else "♜"
 
     def get_possible_moves_index(self, b) -> List[Index]:
         return perpendicular(b, self.index, self.color)
@@ -491,7 +497,7 @@ class Rook(Piece):
 
 class King(Piece):
     def __str__(self) -> str:
-        return "K"
+        return "♔" if self.color == Color.WHITE else "♚"
 
     def in_check(self, b, p) -> bool:
         """Verify if king is in check
@@ -536,8 +542,10 @@ class King(Piece):
 
 
 class Queen(Piece):
+    value = 9
+
     def __str__(self) -> str:
-        return "Q"
+        return "♕" if self.color == Color.WHITE else "♛"
 
     def get_possible_moves_index(self, b) -> List[Index]:
         out = perpendicular(b, self.index, self.color)
@@ -643,6 +651,7 @@ class Board:
                 Column.E,
                 Column.F,
                 Column.G,
+                Column.H,
             ]:
                 row.append(color(self.board[r][c]))
             rows.append(" ".join(row))
@@ -665,9 +674,16 @@ class Player:
                 raise ValueError("Invalid piece color added to player")
             self.set_piece_index(piece.index)
 
-    def get_score(self, board: Board):
+    def get_material(self, board: Board) -> int:
+        score = 0
+        for index in self.index_list:
+            piece = get_index(board, index)
+            score += piece.value
+        return score
+
+    def get_score(self, board: Board) -> int:
         """Intended for player strategy"""
-        pass
+        return self.get_material(board)
 
     def is_attacking_index(self, b: Board, index: Index):
         for index in self.index_list:
