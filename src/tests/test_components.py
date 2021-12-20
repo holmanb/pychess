@@ -10,15 +10,16 @@ from ..components import (
     Queen,
     King,
     Player,
+    Index,
+    Position,
 )
 
 
 class TestPieces:
     def test_piece_move_to(self):
         p = Piece(Column.A, 1, Color.BLACK)
-        p.move_to_position(Column.H, 2)
-        assert p.x == Column.H
-        assert p.y == 1
+        p.move_to_position(Position(Column.H, 2))
+        assert p.get_position() == Index(Column.H, 2)
 
     def test_piece_get_relative_position(self):
         p1 = Piece(Column.A, 1, Color.BLACK)
@@ -317,8 +318,16 @@ class TestKing:
         white = Player(Color.WHITE, player)
         player.append(k1)
         b = Board(player)
-        moves = k1.get_possible_moves_position(b, white)
 
+        moves = k1.get_possible_moves_position(b, white)
+        print("king moves: {}".format(moves))
+
+        white_defended = white.get_defended_positions(b)
+        print("defended: {}".format(white_defended))
+        print(b.prettify())
+        white.print_defended_positions(b)
+        for move in white_defended:
+            assert move not in moves
         assert (Column.C, 5) in moves
 
         # defended by D3
@@ -340,7 +349,7 @@ class TestKing:
 
 
 class TestPlayer:
-    def test_player_is_defending(self):
+    def test_player_is_defending_one_pawn(self):
         board = [
             Pawn(Column.C, 5, Color.WHITE),
         ]
@@ -352,3 +361,28 @@ class TestPlayer:
         assert player.is_defending_position(b, Column.B, 6)
         assert player.is_defending_position(b, Column.D, 6)
         assert 2 == len(defended_positions)
+
+    def test_player_is_defending_pawn_line(self):
+        board = [
+            Pawn(Column.A, 2, Color.WHITE),
+            Pawn(Column.B, 2, Color.WHITE),
+            Pawn(Column.C, 2, Color.WHITE),
+            Pawn(Column.D, 2, Color.WHITE),
+            Pawn(Column.E, 2, Color.WHITE),
+            Pawn(Column.F, 2, Color.WHITE),
+            Pawn(Column.G, 2, Color.WHITE),
+        ]
+        b = Board(board)
+        player = Player(Color.WHITE, board)
+        defended_positions = player.get_defended_positions(b)
+        assert (Column.A, 3) in defended_positions
+        assert (Column.B, 3) in defended_positions
+        assert (Column.C, 3) in defended_positions
+        assert (Column.D, 3) in defended_positions
+        assert (Column.E, 3) in defended_positions
+        assert (Column.F, 3) in defended_positions
+        assert (Column.G, 3) in defended_positions
+
+        assert 8 == len(defended_positions)
+        print(b.prettify())
+        player.print_defended_positions(b)

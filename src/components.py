@@ -3,6 +3,7 @@ from typing import Union, List, Any
 from collections import namedtuple
 
 Index = namedtuple("Index", ("x", "y"))
+Position = namedtuple("Position", ("x", "y"))
 
 
 class Column(IntEnum):
@@ -36,35 +37,42 @@ class IndexType(IntEnum):
     OPEN = 3
 
 
-def is_index_valid(x: int, y: int) -> bool:
-    return x >= 0 and x < 8 and y >= 0 and y < 8
-
-
-def is_position_valid(x: Column, y: int) -> bool:
-    return is_index_valid(int(x), y - 1)
-
-
-def index_valid_or_raise(x: int, y: int):
-    if not is_index_valid(x, y):
-        raise ValueError(f"invalid index [{x}][{y}]")
-
-
-def position_valid_or_raise(x: Column, y: int):
-    if not position_valid_or_raise(x, y):
-        raise ValueError(f"invalid index [{x}][{y}]")
-
-
-def get_index(b, x: int, y: int):
-    return b.board[x][y]
-
-
-def get_position(b, x: Column, y: int):
-    return get_index(b, x, y - 1)
-
-
 class Color(Enum):
     BLACK = 1
     WHITE = 2
+
+
+def index_to_position(index: Index) -> Position:
+    return Position(Column(index.x), index.y - 1)
+
+
+def position_to_index(position: Position) -> Index:
+    return Index(int(position.x), position.y + 1)
+
+
+def is_index_valid(index: Index) -> bool:
+    return index.x >= 0 and index.x < 8 and index.y >= 0 and index.y < 8
+
+
+def is_position_valid(position: Position) -> bool:
+    return is_index_valid(position_to_index(position))
+
+
+def index_valid_or_raise(index: Index):
+    if not is_index_valid(index):
+        raise ValueError(f"invalid index {index}")
+
+
+def position_valid_or_raise(position: Position):
+    index_valid_or_raise(position_to_index(position))
+
+
+def get_index(b, index: Index):
+    return b.board[index.x][index.y]
+
+
+def get_position(b, position: Position):
+    return get_index(b, position_to_index(position))
 
 
 def get_other_color(color: Color):
@@ -98,10 +106,12 @@ class Piece:
     """
 
     def __init__(self, x: Column, y: int, color: Color):
-        self.x = x
-        self.y = y - 1
-        index_valid_or_raise(self.x, self.y)
+        self.index = Index(x, y - 1)
+        index_valid_or_raise(self.index)
         self.color = color
+
+    def get_position(self):
+        return index_to_position(self.index)
 
     def get_possible_moves_index(self, b) -> List[Index]:
         """Get list of available moves by this piece"""
@@ -120,27 +130,26 @@ class Piece:
 
     def is_relative_index_valid(self, x: int, y: int) -> bool:
         """Check validity of index relative to current position"""
-        return is_index_valid(self.x + x, self.y + y)
+        return is_index_valid(Index(self.index.x + x, self.index.y + y))
 
     def relative_index_valid_or_raise(self, x: int, y: int):
         """Check validity and raise if invalid"""
-        index_valid_or_raise(self.x + x, self.y + y)
+        index_valid_or_raise(Index(self.index.x + x, self.index.y + y))
 
-    def move_to_index(self, x: int, y: int) -> None:
-        index_valid_or_raise(x, y)
-        self.x = x
-        self.y = y
+    def move_to_index(self, index: Index) -> None:
+        index_valid_or_raise(index)
+        self.index = index
 
     def move_to_relative_index(self, x: int, y: int) -> None:
-        self.move_to_index(self.x + x, self.y + y)
+        self.move_to_index(Index(self.index.x + x, self.index.y + y))
 
-    def move_to_position(self, x: Column, y: int) -> None:
+    def move_to_position(self, pos: Position) -> None:
         """Move to board position using standard chess naming: A1-H8"""
-        index_valid_or_raise(x, y - 1)
-        self.move_to_index(x, y - 1)
+        position_valid_or_raise(pos)
+        self.move_to_index(position_to_index(pos))
 
     def get_relative_index(self, b, x: int, y: int):
-        return get_index(b, self.x + x, self.y + y)
+        return get_index(b, Index(self.index.x + x, self.index.y + y))
 
     def get_relative_index_color(self, b, x: int, y: int):
         """Get color of piece"""
@@ -180,7 +189,7 @@ class Pawn(Piece):
             and self.color
             is not self.get_relative_index_color(b, -1, y_direction)
         ):
-            moves.append(Index(self.x - 1, self.y + y_direction))
+            moves.append(Index(self.index.x - 1, self.index.y + y_direction))
         # attack
         if (
             self.is_relative_index_valid(1, y_direction)
@@ -188,7 +197,7 @@ class Pawn(Piece):
             and self.color
             is not self.get_relative_index_color(b, 1, y_direction)
         ):
-            moves.append(Index(self.x + 1, self.y + y_direction))
+            moves.append(Index(self.index.x + 1, self.index.y + y_direction))
         return moves
 
     def get_defended_moves_index(self, b, *args) -> List[Index]:
@@ -200,10 +209,10 @@ class Pawn(Piece):
             y_direction = 1
         # defend
         if self.is_relative_index_valid(-1, y_direction):
-            moves.append(Index(self.x - 1, self.y + y_direction))
+            moves.append(Index(self.index.x - 1, self.index.y + y_direction))
         # defend
         if self.is_relative_index_valid(1, y_direction):
-            moves.append(Index(self.x + 1, self.y + y_direction))
+            moves.append(Index(self.index.x + 1, self.index.y + y_direction))
         return moves
 
     def get_possible_moves_index(self, b) -> List[Index]:
@@ -215,23 +224,27 @@ class Pawn(Piece):
 
         # if not blocked, move forward
         if not self.get_relative_index(b, 0, y_direction):
-            moves.append(Index(self.x, self.y + y_direction))
+            moves.append(Index(self.index.x, self.index.y + y_direction))
 
         # if not blocked, move forward
         if self.color == Color.WHITE:
             if (
-                1 == self.y
+                1 == self.index.y
                 and not self.get_relative_index(b, 0, y_direction)
                 and not self.get_relative_index(b, 0, 2 * y_direction)
             ):
-                moves.append(Index(self.x, self.y + 2 * y_direction))
+                moves.append(
+                    Index(self.index.x, self.index.y + 2 * y_direction)
+                )
         else:
             if (
-                6 == self.y
+                6 == self.index.y
                 and not self.get_relative_index(b, 0, y_direction)
                 and not self.get_relative_index(b, 0, 2 * y_direction)
             ):
-                moves.append(Index(self.x, self.y + 2 * y_direction))
+                moves.append(
+                    Index(self.index.x, self.index.y + 2 * y_direction)
+                )
 
         moves.extend(self.get_attacking_moves_index(b))
         return moves
@@ -251,8 +264,7 @@ class Knight(Piece):
 
 def get_indices_in_line(
     b,
-    x: int,
-    y: int,
+    index: Index,
     color: Color,
     x_mult: int = 0,
     y_mult: int = 0,
@@ -274,23 +286,24 @@ def get_indices_in_line(
     """
     o = []
     for i in range(1, max_depth):
-        index_x = x + i * x_mult
-        index_y = y + i * y_mult
-        if is_index_valid(index_x, index_y):
-            piece = get_index(b, index_x, index_y)
+        index_x = index.x + i * x_mult
+        index_y = index.y + i * y_mult
+        derived_index = Index(index_x, index_y)
+        if is_index_valid(derived_index):
+            piece = get_index(b, derived_index)
             if piece:
                 # blocked by own color
                 if piece.color == color:
 
                     if index_type == IndexType.DEFENDED:
-                        o.append(Index(index_x, index_y))
+                        o.append(derived_index)
                     break
                 # attack
                 else:
-                    o.append(Index(index_x, index_y))
+                    o.append(derived_index)
                     break
             else:
-                o.append(Index(index_x, index_y))
+                o.append(derived_index)
         else:
             break
 
@@ -299,8 +312,7 @@ def get_indices_in_line(
 
 def diagonal(
     b,
-    x: int,
-    y: int,
+    index: Index,
     color,
     max_depth: int = 8,
     index_type: IndexType = IndexType.ATTACKED,
@@ -311,8 +323,7 @@ def diagonal(
     out.extend(
         get_indices_in_line(
             b,
-            x,
-            y,
+            index,
             color,
             x_mult=1,
             y_mult=1,
@@ -325,8 +336,7 @@ def diagonal(
     out.extend(
         get_indices_in_line(
             b,
-            x,
-            y,
+            index,
             color,
             x_mult=1,
             y_mult=-1,
@@ -339,8 +349,7 @@ def diagonal(
     out.extend(
         get_indices_in_line(
             b,
-            x,
-            y,
+            index,
             color,
             x_mult=-1,
             y_mult=-1,
@@ -353,8 +362,7 @@ def diagonal(
     out.extend(
         get_indices_in_line(
             b,
-            x,
-            y,
+            index,
             color,
             x_mult=-1,
             y_mult=1,
@@ -367,8 +375,7 @@ def diagonal(
 
 def perpendicular(
     b,
-    x: int,
-    y: int,
+    index: Index,
     color: Color,
     max_depth: int = 8,
     index_type: IndexType = IndexType.ATTACKED,
@@ -380,8 +387,7 @@ def perpendicular(
     out.extend(
         get_indices_in_line(
             b,
-            x,
-            y,
+            index,
             color,
             y_mult=1,
             max_depth=max_depth,
@@ -393,8 +399,7 @@ def perpendicular(
     out.extend(
         get_indices_in_line(
             b,
-            x,
-            y,
+            index,
             color,
             y_mult=-1,
             max_depth=max_depth,
@@ -406,8 +411,7 @@ def perpendicular(
     out.extend(
         get_indices_in_line(
             b,
-            x,
-            y,
+            index,
             color,
             x_mult=-1,
             max_depth=max_depth,
@@ -419,8 +423,7 @@ def perpendicular(
     out.extend(
         get_indices_in_line(
             b,
-            x,
-            y,
+            index,
             color,
             x_mult=1,
             max_depth=max_depth,
@@ -435,12 +438,10 @@ class Bishop(Piece):
         return "B"
 
     def get_possible_moves_index(self, b) -> List[Index]:
-        return diagonal(b, self.x, self.y, self.color)
+        return diagonal(b, self.index, self.color)
 
     def get_defended_moves_index(self, b, *args) -> List[Index]:
-        return diagonal(
-            b, self.x, self.y, self.color, IndexType.DEFENDED, *args
-        )
+        return diagonal(b, self.index, self.color, IndexType.DEFENDED, *args)
 
 
 class Rook(Piece):
@@ -448,11 +449,11 @@ class Rook(Piece):
         return "C"
 
     def get_possible_moves_index(self, b) -> List[Index]:
-        return perpendicular(b, self.x, self.y, self.color)
+        return perpendicular(b, self.index, self.color)
 
     def get_defended_moves_index(self, b, *args) -> List[Index]:
         return perpendicular(
-            b, self.x, self.y, self.color, IndexType.DEFENDED, *args
+            b, self.index, self.color, IndexType.DEFENDED, *args
         )
 
 
@@ -468,7 +469,7 @@ class King(Piece):
         """
         if p.color == self.color:
             raise ValueError("Need opposite player to verify checkness")
-        return p.is_defending_index(b, Index(self.x, self.y))
+        return p.is_defending_index(b, self.index)
 
     def get_possible_moves_index(self, board, player) -> List[Index]:
         """Getting possible moves for the king requires checking which indices
@@ -476,10 +477,21 @@ class King(Piece):
         """
         if player.color == self.color:
             raise ValueError("Need opposite player to verify checkness")
-        out = perpendicular(board, self.x, self.y, self.color, max_depth=2)
-        out.extend(diagonal(board, self.x, self.y, self.color, max_depth=2))
+        out = perpendicular(board, self.index, self.color, max_depth=2)
+        out.extend(diagonal(board, self.index, self.color, max_depth=2))
         print("total king moves: {}".format(out))
         for i, move in enumerate(out):
+            print("king's moves: ({})".format(set(out)))
+            print(
+                "threatened positions: ({})".format(
+                    set(player.get_defended_positions(board))
+                )
+            )
+            print(
+                "set difference: ({})".format(
+                    set(out) - set(player.get_defended_indices(board))
+                )
+            )
             if player.is_defending_index(board, move):
                 print("{}: index {} under attack, removing".format(i, move))
                 out.remove(move)
@@ -498,8 +510,7 @@ class King(Piece):
             raise ValueError("Need opposite player to verify checkness")
         out = perpendicular(
             board,
-            self.x,
-            self.y,
+            self.index,
             self.color,
             max_depth=2,
             index_type=IndexType.DEFENDED,
@@ -507,8 +518,7 @@ class King(Piece):
         out.extend(
             diagonal(
                 board,
-                self.x,
-                self.y,
+                self.index,
                 self.color,
                 max_depth=2,
                 index_type=IndexType.DEFENDED,
@@ -522,13 +532,13 @@ class Queen(Piece):
         return "Q"
 
     def get_possible_moves_index(self, b) -> List[Index]:
-        out = perpendicular(b, self.x, self.y, self.color)
-        out.extend(diagonal(b, self.x, self.y, self.color))
+        out = perpendicular(b, self.index, self.color)
+        out.extend(diagonal(b, self.index, self.color))
         return out
 
     def get_defended_moves_index(self, b, *_args) -> List[Index]:
-        out = perpendicular(b, self.x, self.y, self.color, IndexType.DEFENDED)
-        out.extend(diagonal(b, self.x, self.y, self.color, IndexType.DEFENDED))
+        out = perpendicular(b, self.index, self.color, IndexType.DEFENDED)
+        out.extend(diagonal(b, self.index, self.color, IndexType.DEFENDED))
         return out
 
 
@@ -541,11 +551,11 @@ class Board:
         self.board: List[List]
         self.board = [[None for _ in range(8)] for _ in range(8)]
         for piece in pieces:
-            self.init_piece(piece, Column(piece.x), piece.y)
+            self.init_piece(piece, piece.index)
 
-    def init_piece(self, piece, x: Column, y: int):
-        index_valid_or_raise(x, y)
-        self.board[x][y] = piece
+    def init_piece(self, piece, index: Index):
+        index_valid_or_raise(index)
+        self.board[piece.index.x][piece.index.y] = piece
 
     def is_index_under_attack(self, player, index: Index):
         """Attacking indexes are ones which a king may not move into"""
@@ -602,17 +612,21 @@ class Board:
 
     def to_string(self, color=lambda i: str(i) if i else " ") -> str:
         """Pay no attention to the man behind the curtain"""
-        lines = []
-        for i in range(8):
-            lines.append(
-                " ".join(
-                    map(
-                        color,
-                        [self.board[j][7 - i] for j in range(8)],
-                    )
-                )
-            )
-        return "\n".join(lines)
+        rows = []
+        for c in [7, 6, 5, 4, 3, 2, 1, 0]:
+            row = []
+            for r in [
+                Column.A,
+                Column.B,
+                Column.C,
+                Column.D,
+                Column.E,
+                Column.F,
+                Column.G,
+            ]:
+                row.append(color(self.board[r][c]))
+            rows.append(" ".join(row))
+        return "\n".join(rows)
 
     def __str__(self) -> str:
         return self.to_string()
@@ -629,7 +643,7 @@ class Player:
         for piece in pieces:
             if piece.color is not self.color:
                 raise ValueError("Invalid piece color added to player")
-            self.set_piece_index(Index(piece.x, piece.y))
+            self.set_piece_index(piece.index)
 
     def get_score(self, board: Board):
         """Intended for player strategy"""
@@ -650,20 +664,29 @@ class Player:
             piece_obj = b.board[piece_index.x][piece_index.y]
             for move in piece_obj.get_defended_moves_index(b, self):
                 out.append(move)
-        return out
+        return list(set(out))
 
     def get_defended_positions(self, b: Board) -> List[Index]:
         return [
             Index(Column(x), y + 1) for x, y in self.get_defended_indices(b)
         ]
 
-    def is_defending_index(self, b: Board, index: Index):
+    def print_defended_positions(self, b: Board) -> None:
+        print("Defended Positions:")
+        print("===================")
+        pieces = []
+        for piece in self.get_defended_positions(b):
+            pieces.append(Piece(piece.x, piece.y, Color.BLACK))
+        print(Board(pieces).prettify())
+
+    def is_defending_index(self, b: Board, index: Index) -> bool:
+        print(self.get_defended_indices(b))
         return index in self.get_defended_indices(b)
 
-    def is_attacking_position(self, b: Board, x: Column, y: int):
+    def is_attacking_position(self, b: Board, x: Column, y: int) -> bool:
         return self.is_attacking_index(b, Index(int(x), y - 1))
 
-    def is_defending_position(self, b: Board, x: Column, y: int):
+    def is_defending_position(self, b: Board, x: Column, y: int) -> bool:
         print("checking for position [{}, {}]".format(x, y))
         return self.is_defending_index(b, Index(int(x), y - 1))
 
@@ -676,5 +699,5 @@ class Player:
         self.index_list.remove(index)
 
     def update_piece_index(self, piece: Piece, new_index: Index):
-        self.remove_piece_index(Index(piece.x, piece.y))
+        self.remove_piece_index(piece.index)
         self.set_piece_index(new_index)
