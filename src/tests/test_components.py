@@ -308,6 +308,41 @@ class TestBishop:
             assert position_to_index(move) in indices
         assert 4 == len(indices)
 
+    def test_bishop_defend_king(self):
+        """Bishop must invoke is_check() before returning moves
+        Also, if king is in check, should not be able to move bishop unless
+        it blocks check
+        """
+        r1 = Rook(Column.D, 7, Color.WHITE)
+        b1 = Bishop(Column.D, 6, Color.BLACK)
+        k1 = King(Column.D, 5, Color.BLACK)
+        pieces = [
+            r1,
+            b1,
+            k1,
+        ]
+        b = Board(pieces)
+        indices = r1.get_possible_moves_index(b)
+        assert not indices
+
+    def test_bishop_move_to_defend_king(self):
+        """Bishop must invoke is_check() before returning moves
+        If king is in check, should not be able to move bishop unless
+        it blocks check
+        """
+        r1 = Rook(Column.D, 7, Color.WHITE)
+        b1 = Bishop(Column.E, 7, Color.BLACK)
+        k1 = King(Column.D, 5, Color.BLACK)
+        pieces = [
+            r1,
+            b1,
+            k1,
+        ]
+        b = Board(pieces)
+        indices = r1.get_possible_moves_index(b)
+        assert (Column.D, 6) in indices
+        assert 1 == len(indices)
+
 
 class TestKing:
     def test_bishop_get_defended_moves(self):

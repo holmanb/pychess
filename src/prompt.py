@@ -1,7 +1,6 @@
 #!/usr/bin/env python3.10
-import pprint
 
-def parse(in_string: str, command: dict = None):
+def parse(in_string: str, command: dict = {}) -> dict:
     result = {
             'move': {
                 'capture': None,
@@ -32,9 +31,9 @@ def parse(in_string: str, command: dict = None):
                 result['move']['start']['rank'] = rank[0]
             case [('1'|'2'|'3'|'4'|'5'|'6'|'7'|'8'), {'end': {'rank': None}, **_kwargs}] as rank:
                 result['move']['end']['rank'] = rank[0]
-            case [('a'|'b'|'c'|'d'|'e'|'f'|'g'), {'start': {'file': None}, **_kwargs}] as file:
+            case [('a'|'b'|'c'|'d'|'e'|'f'|'g'|'h'), {'start': {'file': None}, **_kwargs}] as file:
                 result['move']['start']['file'] = file[0]
-            case [('a'|'b'|'c'|'d'|'e'|'f'|'g'), {'end': {'file': None}, **_kwargs}] as file:
+            case [('a'|'b'|'c'|'d'|'e'|'f'|'g'|'h'), {'end': {'file': None}, **_kwargs}] as file:
                 result['move']['end']['file'] = file[0]
             case ['0-0-0', _]:
                 result['KCastle'] = True
@@ -70,24 +69,23 @@ def is_notation_valid(command: dict) -> bool:
                 bool(set(move['start'].values()) ^ set(move['end'].values()))
             )
 
-def read_move():
+def read_move() -> dict:
     """Parse input for commands. Supports Long algebraic notation. Stores but
     ignores indicators, capture "x", en passant "e.p.", check "+", and
     checkmate "#"
     """
-    try:
-        while True:
-            try:
-                orig = input("> ")
-                out = parse(orig)
-                pprint.pprint(out)
-                if not is_notation_valid(out):
-                    raise ValueError()
-                pprint.pprint(out)
-            except ValueError:
-                print(f"Invalid input: \"{orig}\"")
-    except KeyboardInterrupt:
-        print()
+    while True:
+        try:
+            orig = input("> ")
+            out = parse(orig)
+            if not is_notation_valid(out):
+                raise ValueError()
+            return out
+        except ValueError:
+            print(f"Invalid input: \"{orig}\"")
 
 if "__main__" == __name__:
-    read_move()
+    try:
+        read_move()
+    except KeyboardInterrupt:
+        print()

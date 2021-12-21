@@ -1,9 +1,11 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.10
 
+from prompt import read_move
 from components import (
     Color,
     Column,
     Board,
+    Player,
     Rook,
     Bishop,
     Knight,
@@ -55,8 +57,8 @@ DEFAULT_BLACK = [
 DEFAULT_BOARD = DEFAULT_BLACK + DEFAULT_WHITE
 
 
-def get_user_input():
-    pass
+def get_user_input() -> dict:
+    return read_move()
 
 
 def evaluate_user_input():
@@ -67,5 +69,37 @@ def print_board():
     pass
 
 
+def game_loop(board: Board, white: Player, black: Player):
+    """For now, single keyboard input drives both players (for testing)
+    """
+    try:
+        turn = Color.WHITE
+        err_msg = ""
+        while True:
+            try:
+                print("{}'s Turn\tMaterial: {}/{}".format(
+                    "White" if turn == Color.WHITE else "Black",
+                    white.get_material(board), black.get_material(board)))
+                print(board.prettify())
+                print(err_msg)
+                err_msg = ""
+                user_in = get_user_input()
+
+                if turn == Color.WHITE:
+                    white.move(user_in, board, black)
+                if turn == Color.BLACK:
+                    black.move(user_in, board, white)
+
+                # Switch turns
+                turn = Color.BLACK if turn == Color.WHITE else Color.WHITE
+            except ValueError as e:
+                err_msg = e
+    except KeyboardInterrupt:
+        print()
+
+
 if __name__ == "__main__":
-    print(Board(DEFAULT_BOARD).prettify())
+    board = Board(DEFAULT_BOARD)
+    white = Player(Color.WHITE, DEFAULT_WHITE)
+    black = Player(Color.BLACK, DEFAULT_BLACK)
+    game_loop(board, white, black)

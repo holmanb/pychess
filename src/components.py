@@ -87,8 +87,7 @@ def get_other_color(color: Color):
 class Piece:
     """Base class for all pieces
 
-    param x: holds the index
-    param y: holds the index
+    param index: coordinates in array
     param color: which team
 
     The following creates a new black Piece on A1 and moves it to H2
@@ -107,14 +106,14 @@ class Piece:
     value = None
 
     def __init__(self, x: Column, y: int, color: Color):
-        self.index = Index(x, y - 1)
+        self.index = position_to_index(Position(x, y))
         index_valid_or_raise(self.index)
         self.color = color
 
     def get_position(self):
         return index_to_position(self.index)
 
-    def get_possible_moves_index(self, _b) -> List[Index]:
+    def get_possible_moves_index(self, _b, *_args) -> List[Index]:
         """Get list of available moves by this piece"""
         raise NotImplementedError()
 
@@ -223,7 +222,7 @@ class Pawn(Piece):
             moves.append(Index(self.index.x + 1, self.index.y + y_direction))
         return moves
 
-    def get_possible_moves_index(self, b) -> List[Index]:
+    def get_possible_moves_index(self, b, *args) -> List[Index]:
         moves = []
         if self.color == Color.BLACK:
             y_direction = -1
@@ -280,12 +279,12 @@ class Knight(Piece):
             Index(self.index.x + 2, self.index.y - 1),
         ]
 
-    def get_possible_moves_index(self, b) -> List[Index]:
+    def get_possible_moves_index(self, b, *_args) -> List[Index]:
         out = []
         for index in self.get_potentials():
             if is_index_valid(index):
                 value = get_index(b, index)
-                if self.color != value.color:
+                if not value or self.color != value.color:
                     out.append(index)
         return out
 
@@ -472,12 +471,12 @@ class Bishop(Piece):
     def __str__(self) -> str:
         return "♗" if self.color == Color.WHITE else "♝"
 
-    def get_possible_moves_index(self, b) -> List[Index]:
+    def get_possible_moves_index(self, b, *_args) -> List[Index]:
         return diagonal(b, self.index, self.color)
 
     def get_defended_moves_index(self, b, *args) -> List[Index]:
         return diagonal(
-            b, self.index, self.color, index_type=IndexType.DEFENDED, *args
+            b, self.index, self.color, index_type=IndexType.DEFENDED
         )
 
 
@@ -486,12 +485,12 @@ class Rook(Piece):
     def __str__(self) -> str:
         return "♖" if self.color == Color.WHITE else "♜"
 
-    def get_possible_moves_index(self, b) -> List[Index]:
+    def get_possible_moves_index(self, b, *_args) -> List[Index]:
         return perpendicular(b, self.index, self.color)
 
     def get_defended_moves_index(self, b, *args) -> List[Index]:
         return perpendicular(
-            b, self.index, self.color, *args, index_type=IndexType.DEFENDED
+            b, self.index, self.color, index_type=IndexType.DEFENDED
         )
 
 
@@ -547,7 +546,7 @@ class Queen(Piece):
     def __str__(self) -> str:
         return "♕" if self.color == Color.WHITE else "♛"
 
-    def get_possible_moves_index(self, b) -> List[Index]:
+    def get_possible_moves_index(self, b, *_args) -> List[Index]:
         out = perpendicular(b, self.index, self.color)
         out.extend(diagonal(b, self.index, self.color))
         return out
@@ -563,7 +562,7 @@ class Queen(Piece):
 
 
 # For type hints
-AllPieces = Union[King, Queen, Rook, Rook, Bishop, Pawn, Piece]
+AllPieces = Union[King, Queen, Rook, Bishop, Pawn, Piece]
 
 
 class Board:
@@ -592,6 +591,18 @@ class Board:
     def is_defending_index(self, player, index: Index):
         """Defended indexes are ones which a king may not move into"""
         player.is_defending_index(player, self, index)
+
+    def set_index(self, index: Index, piece: Piece) -> None:
+        self.board[index.x][index.y] = piece
+
+    def set_position(self, position: Position, piece: Piece) -> None:
+        self.set_index(position_to_index(position), piece)
+
+    def clear_index(self, index: Index) -> None:
+        self.board[index.x][index.y] = None
+
+    def clear_position(self, position: Position) -> None:
+        self.clear_index(position_to_index(position))
 
     @staticmethod
     def to_color(string: Any, color: str):
@@ -661,6 +672,33 @@ class Board:
         return self.to_string()
 
 
+piece_notation_to_class = {
+    "K": King,
+    "Q": Queen,
+    "N": Knight,
+    "B": Bishop,
+    "R": Rook,
+    "P": Pawn,
+}
+
+piece_str_to_column = {
+    'a': Column.A,
+    'b': Column.B,
+    'c': Column.C,
+    'd': Column.D,
+    'e': Column.E,
+    'f': Column.F,
+    'g': Column.G,
+    'h': Column.H,
+}
+
+
+def cmd_to_position(cmd: dict):
+    """Map command notation to position"""
+    file = piece_str_to_column[cmd['file']]
+    return Position(file, int(cmd['rank']))
+
+
 class Player:
     """Represents one side, used to track the location of pieces for iterating
     over, rather than iterating over the entire board
@@ -678,7 +716,13 @@ class Player:
         score = 0
         for index in self.index_list:
             piece = get_index(board, index)
-            score += piece.value
+            if not piece:
+                print(board.prettify())
+                print(self.index_list)
+                raise ValueError("Accounting error, no piece at position: {}".format(index_to_position(index)))
+
+            if piece.value:
+                score += piece.value
         return score
 
     def get_score(self, board: Board) -> int:
@@ -737,3 +781,82 @@ class Player:
     def update_piece_index(self, piece: Piece, new_index: Index):
         self.remove_piece_index(piece.index)
         self.set_piece_index(new_index)
+
+    def update_piece_position(self, piece: Piece, new_position: Position):
+        return self.update_piece_index(piece, position_to_index(new_position))
+
+    def do_move(self, move: dict, board: Board, other_player):
+        """Move piece and update accounting in board, players, and piece
+        """
+        start = move['start']
+        end = move['end']
+
+        # Source position
+        src_pos = cmd_to_position(start)
+
+        # Destination position
+        dst_pos = cmd_to_position(end)
+
+        # Get class of piece
+
+        # Get piece at source position
+        src_piece = get_position(board, src_pos)
+
+        # Get piece at destination position
+        dst_piece = get_position(board, dst_pos)
+
+
+        # Check that source piece exists
+        if not src_piece:
+            raise ValueError("No piece at {}{}".format(
+                start['file'], start['rank']))
+        # Check that piece is correct type
+        elif not isinstance(src_piece, piece_notation_to_class[move['piece']]):
+            raise ValueError("Piece at {}{} is not of type {}".format(
+                start['file'], start['rank'], start['piece']))
+
+        # Check that source piece is owned by this player
+        elif src_piece.color is not self.color:
+            raise ValueError("Piece at {}{} is not {}".format(
+                start['file'], start['rank'], self.color))
+
+        # Get all moves the source piece can do
+        moves = src_piece.get_possible_moves_position(board, other_player)
+
+        # Check that requested destination is legal
+        if dst_pos not in moves:
+            raise ValueError(
+                "Requested move [{}] is not legal".format(dst_pos))
+
+        # Handle taking opponent's piece
+        elif dst_piece is not None:
+
+            # Check that not moving to same color
+            if dst_piece.color is self.color:
+                raise ValueError(
+                    "Piece {} at {} is same color({}),"
+                    " can't move there!".format(
+                        dst_piece, dst_pos, dst_piece.color))
+
+            # Remove piece from other player's index
+            other_player.remove_piece_index(position_to_index(dst_pos))
+
+        # Update this player's accounting
+        self.update_piece_position(src_piece, dst_pos)
+
+        # Update piece accounting
+        src_piece.move_to_position(dst_pos)
+
+        # Set piece to new position
+        board.set_position(dst_pos, src_piece)
+
+        # Delete the old board position
+        board.clear_position(src_pos)
+
+    def move(self, move: dict, board: Board, other_player):
+        if move['QCastle']:
+            raise NotImplementedError()
+        elif move['KCastle']:
+            raise NotImplementedError()
+        else:
+            self.do_move(move['move'], board, other_player)
