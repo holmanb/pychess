@@ -103,6 +103,7 @@ class Piece:
     "position" in the function name and have one "Column" type hinted parameter
     ```
     """
+
     value = None
 
     def __init__(self, x: Column, y: int, color: Color):
@@ -179,6 +180,7 @@ class Piece:
 # TODO: en passante, promotion
 class Pawn(Piece):
     value = 1
+
     def __str__(self) -> str:
         return "♙" if self.color == Color.WHITE else "♟︎"
 
@@ -468,6 +470,7 @@ def perpendicular(
 
 class Bishop(Piece):
     value = 3
+
     def __str__(self) -> str:
         return "♗" if self.color == Color.WHITE else "♝"
 
@@ -482,6 +485,7 @@ class Bishop(Piece):
 
 class Rook(Piece):
     value = 5
+
     def __str__(self) -> str:
         return "♖" if self.color == Color.WHITE else "♜"
 
@@ -682,21 +686,21 @@ piece_notation_to_class = {
 }
 
 piece_str_to_column = {
-    'a': Column.A,
-    'b': Column.B,
-    'c': Column.C,
-    'd': Column.D,
-    'e': Column.E,
-    'f': Column.F,
-    'g': Column.G,
-    'h': Column.H,
+    "a": Column.A,
+    "b": Column.B,
+    "c": Column.C,
+    "d": Column.D,
+    "e": Column.E,
+    "f": Column.F,
+    "g": Column.G,
+    "h": Column.H,
 }
 
 
 def cmd_to_position(cmd: dict):
     """Map command notation to position"""
-    file = piece_str_to_column[cmd['file']]
-    return Position(file, int(cmd['rank']))
+    file = piece_str_to_column[cmd["file"]]
+    return Position(file, int(cmd["rank"]))
 
 
 class Player:
@@ -719,7 +723,11 @@ class Player:
             if not piece:
                 print(board.prettify())
                 print(self.index_list)
-                raise ValueError("Accounting error, no piece at position: {}".format(index_to_position(index)))
+                raise ValueError(
+                    "Accounting error, no piece at position: {}".format(
+                        index_to_position(index)
+                    )
+                )
 
             if piece.value:
                 score += piece.value
@@ -786,10 +794,9 @@ class Player:
         return self.update_piece_index(piece, position_to_index(new_position))
 
     def do_move(self, move: dict, board: Board, other_player):
-        """Move piece and update accounting in board, players, and piece
-        """
-        start = move['start']
-        end = move['end']
+        """Move piece and update accounting in board, players, and piece"""
+        start = move["start"]
+        end = move["end"]
 
         # Source position
         src_pos = cmd_to_position(start)
@@ -805,20 +812,26 @@ class Player:
         # Get piece at destination position
         dst_piece = get_position(board, dst_pos)
 
-
         # Check that source piece exists
         if not src_piece:
-            raise ValueError("No piece at {}{}".format(
-                start['file'], start['rank']))
+            raise ValueError(
+                "No piece at {}{}".format(start["file"], start["rank"])
+            )
         # Check that piece is correct type
-        elif not isinstance(src_piece, piece_notation_to_class[move['piece']]):
-            raise ValueError("Piece at {}{} is not of type {}".format(
-                start['file'], start['rank'], start['piece']))
+        elif not isinstance(src_piece, piece_notation_to_class[move["piece"]]):
+            raise ValueError(
+                "Piece at {}{} is not of type {}".format(
+                    start["file"], start["rank"], start["piece"]
+                )
+            )
 
         # Check that source piece is owned by this player
         elif src_piece.color is not self.color:
-            raise ValueError("Piece at {}{} is not {}".format(
-                start['file'], start['rank'], self.color))
+            raise ValueError(
+                "Piece at {}{} is not {}".format(
+                    start["file"], start["rank"], self.color
+                )
+            )
 
         # Get all moves the source piece can do
         moves = src_piece.get_possible_moves_position(board, other_player)
@@ -826,7 +839,8 @@ class Player:
         # Check that requested destination is legal
         if dst_pos not in moves:
             raise ValueError(
-                "Requested move [{}] is not legal".format(dst_pos))
+                "Requested move [{}] is not legal".format(dst_pos)
+            )
 
         # Handle taking opponent's piece
         elif dst_piece is not None:
@@ -836,7 +850,9 @@ class Player:
                 raise ValueError(
                     "Piece {} at {} is same color({}),"
                     " can't move there!".format(
-                        dst_piece, dst_pos, dst_piece.color))
+                        dst_piece, dst_pos, dst_piece.color
+                    )
+                )
 
             # Remove piece from other player's index
             other_player.remove_piece_index(position_to_index(dst_pos))
@@ -854,9 +870,9 @@ class Player:
         board.clear_position(src_pos)
 
     def move(self, move: dict, board: Board, other_player):
-        if move['QCastle']:
+        if move["QCastle"]:
             raise NotImplementedError()
-        elif move['KCastle']:
+        elif move["KCastle"]:
             raise NotImplementedError()
         else:
-            self.do_move(move['move'], board, other_player)
+            self.do_move(move["move"], board, other_player)

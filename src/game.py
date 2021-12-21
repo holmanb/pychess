@@ -23,7 +23,6 @@ DEFAULT_WHITE = [
     Bishop(Column.F, 1, Color.WHITE),
     Knight(Column.G, 1, Color.WHITE),
     Rook(Column.H, 1, Color.WHITE),
-
     Pawn(Column.A, 2, Color.WHITE),
     Pawn(Column.B, 2, Color.WHITE),
     Pawn(Column.C, 2, Color.WHITE),
@@ -43,7 +42,6 @@ DEFAULT_BLACK = [
     Bishop(Column.F, 8, Color.BLACK),
     Knight(Column.G, 8, Color.BLACK),
     Rook(Column.H, 8, Color.BLACK),
-
     Pawn(Column.A, 7, Color.BLACK),
     Pawn(Column.B, 7, Color.BLACK),
     Pawn(Column.C, 7, Color.BLACK),
@@ -70,16 +68,19 @@ def print_board():
 
 
 def game_loop(board: Board, white: Player, black: Player):
-    """For now, single keyboard input drives both players (for testing)
-    """
+    """For now, single keyboard input drives both players (for testing)"""
     try:
         turn = Color.WHITE
         err_msg = ""
         while True:
             try:
-                print("{}'s Turn\tMaterial: {}/{}".format(
-                    "White" if turn == Color.WHITE else "Black",
-                    white.get_material(board), black.get_material(board)))
+                print(
+                    "{}'s Turn\tMaterial: {}/{}".format(
+                        "White" if turn == Color.WHITE else "Black",
+                        white.get_material(board),
+                        black.get_material(board),
+                    )
+                )
                 print(board.prettify())
                 print(err_msg)
                 err_msg = ""

@@ -20,12 +20,12 @@ class TestPrompt:
         assert not is_notation_valid(parse("a2 a2"))
 
     @pytest.mark.parametrize(
-            "piece",
-            [
-                "K",
-                "P",
-                "",
-            ]
+        "piece",
+        [
+            "K",
+            "P",
+            "",
+        ],
     )
     @pytest.mark.parametrize("capture", ["x", " ", "#" "+"])
     @pytest.mark.parametrize("rank1", rank)
