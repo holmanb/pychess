@@ -52,55 +52,82 @@ DEFAULT_BLACK = [
     Pawn(Column.H, 7, Color.BLACK),
 ]
 
-DEFAULT_BOARD = DEFAULT_BLACK + DEFAULT_WHITE
 
+class Chess:
+    def __init__(
+            self,
+            get_white_move,
+            get_black_move,
+            white_position=DEFAULT_WHITE,
+            black_position=DEFAULT_BLACK,
+            color=None):
+        """Chess game. Has a game loop for two players. Alternatively may be
+        used as a chess engine to play against
 
-def get_user_input() -> dict:
-    return read_move()
+        param get_white_move: callback function that retrieves white player
+            move, if None, pychess will return best move it calculates
+        param get_black_move: callback function that retrieves black player
+            move, if None, pychess will return best move it calculates
+        param white_position: white player starting position
+        param black_position: white player starting position
+        """
+        board = black_position + white_position
+        self.board: Board = Board(board)
+        self.white: Player = Player(Color.WHITE, white_position)
+        self.black: Player = Player(Color.BLACK, black_position)
+        self.black_input = get_black_move
+        self.white_input = get_white_move
+        self.color = color
+        print("init")
 
-
-def evaluate_user_input():
-    pass
-
-
-def print_board():
-    pass
-
-
-def game_loop(board: Board, white: Player, black: Player):
-    """For now, single keyboard input drives both players (for testing)"""
-    try:
-        turn = Color.WHITE
-        err_msg = ""
-        while True:
-            try:
-                print(
-                    "{}'s Turn\tMaterial: {}/{}".format(
-                        "White" if turn == Color.WHITE else "Black",
-                        white.get_material(board),
-                        black.get_material(board),
+    def loop(self):
+        """Game loop
+        """
+        print("init")
+        try:
+            turn = Color.WHITE
+            err_msg = ""
+            while True:
+                try:
+                    print(
+                        "{}'s Turn\tMaterial: {}/{}".format(
+                            "White" if turn == Color.WHITE else "Black",
+                            self.white.get_material(self.board),
+                            self.black.get_material(self.board),
+                        )
                     )
-                )
-                print(board.prettify())
-                print(err_msg)
-                err_msg = ""
-                user_in = get_user_input()
+                    print(self.board.prettify())
+                    print(err_msg)
+                    err_msg = ""
 
-                if turn == Color.WHITE:
-                    white.move(user_in, board, black)
-                if turn == Color.BLACK:
-                    black.move(user_in, board, white)
+                    if turn == Color.WHITE:
+                        if self.white_input:
+                            user_in = self.white_input()
+                            self.white.move(user_in, self.board, self.black)
+                        else:
+                            best_move = self.white.get_best_move()
+                            self.white.move(best_move, self.board, self.black)
+                    elif turn == Color.BLACK:
+                        user_in = self.black_input()
+                        self.black.move(user_in, self.board, self.white)
 
-                # Switch turns
-                turn = Color.BLACK if turn == Color.WHITE else Color.WHITE
-            except ValueError as e:
-                err_msg = e
-    except KeyboardInterrupt:
-        print()
+                    # Switch turns
+                    turn = Color.BLACK if turn == Color.WHITE else Color.WHITE
+                except ValueError as e:
+                    err_msg = e
+        except KeyboardInterrupt:
+            print()
+
+    def get_best_move(self, opponent_move: dict) -> dict:
+        # Update state with opponent's move
+        if self.color == Color.WHITE:
+            self.black.move(opponent_move, self.board, self.black)
+            return self.black.get_best_move()
+        elif self.color == Color.BLACK:
+            self.white.move(opponent_move, self.board, self.white)
+            return self.white.get_best_move()
 
 
 if __name__ == "__main__":
-    board = Board(DEFAULT_BOARD)
-    white = Player(Color.WHITE, DEFAULT_WHITE)
-    black = Player(Color.BLACK, DEFAULT_BLACK)
-    game_loop(board, white, black)
+    chess = Chess(read_move, read_move)
+    chess.loop()

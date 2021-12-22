@@ -24,7 +24,7 @@ def bestmove():
     """
     uci("info depth 1 seldepth 0")
     uci("info string wow pychess is so strong no way you'll win after THAT opening")
-    uci("bestmove e5")
+    uci("bestmove e7e5")
 
 def parse_command(cmd, state: dict) -> bool:
     """Parse command, return true if bestmove is required
@@ -52,17 +52,23 @@ def parse_command(cmd, state: dict) -> bool:
 
         case ["go", *args]:
             moves = iter(args)
+            state["ponderhit"] = False
             try:
                 while True:
                     token = next(moves)
+
+                    # Boolean tokens
                     if "ponder" == token or "infinite" == token:
                         state[token] = True
+                    # The rest are k/v pairs
                     else:
                         state[token] = next(moves)
 
             except StopIteration:
                 pass
-            return True
+
+            # If ponder, do not send bestmove, wait for ponderhit
+            return not state["ponder"]
 
         # custom start position
         case ["position", "fen", pos]:
@@ -79,7 +85,7 @@ def parse_command(cmd, state: dict) -> bool:
         # Search for move using the last position sent by "go ponder"
         case ["ponderhit"]:
             # use
-            pass
+            return True
 
         case ["quit"]:
             os._exit(0)
@@ -90,7 +96,8 @@ def parse_command(cmd, state: dict) -> bool:
 
 
 def main():
-    LOG_DIR.mkdir()
+    if not LOG_DIR.is_dir():
+        LOG_DIR.mkdir()
     log.basicConfig(filename=LOG_FILE, encoding='utf-8', level=log.DEBUG)
     state = {
         "position": "",

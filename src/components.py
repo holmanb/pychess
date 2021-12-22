@@ -716,6 +716,25 @@ class Player:
                 raise ValueError("Invalid piece color added to player")
             self.set_piece_index(piece.index)
 
+    def get_best_move(self) -> dict:
+
+        return {
+           'QCastle': None,
+           'KCastle': None,
+           'move': {
+                   'capture': None,
+                   'piece': None,
+                   'start': {
+                       'file': None,
+                       'rank': None,
+                   },
+                   'end': {
+                        'file': None,
+                        'rank': None,
+                    },
+                },
+            }
+
     def get_material(self, board: Board) -> int:
         score = 0
         for index in self.index_list:
