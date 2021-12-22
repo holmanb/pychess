@@ -1,6 +1,28 @@
 #!/usr/bin/env python3.10
 
 def parse(in_string: str, command: dict = {}) -> dict:
+    """
+    UCI doesn't use piece symbol in notation, but my cli prompt game does (to
+    simplify implemenation by avoiding ambiguity)
+    Not sure if UCI requires the GUI to verify move legality, but the two
+    that I have tested (cutechess and banksia) both do, and the UCI spec
+    doesn't seem to have any error handling, so I think that chess engine
+    GUIs are expected to pass only legal moves, which simplifies implementation
+    details, but requires a slight change in handling code. See the "strict"
+    option in is_notation_valid().
+
+    The following is the expected notation[1] for CLI use:
+    <piece moves> ::= <Piece symbol><from square><Capture symbol><to square>
+    <pawn moves>  ::= <from square>['-'|'x']<to square>[<promoted to>]
+    <Piece symbol> ::= 'N' | 'B' | 'R' | 'Q' | 'K' | ['P']
+    <Capture symbol> ::= '+'|'#'|'x'
+    <from square> :: = <File><Rank>
+    <File> ::= 'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h'
+    <Rank> ::= '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8'
+
+    [1] based on https://www.chessprogramming.org/Algebraic_Chess_Notation#\
+            Long_Algebraic_Notation_.28LAN.29
+    """
     result = {
             'move': {
                 'capture': None,
@@ -60,10 +82,8 @@ def parse(in_string: str, command: dict = {}) -> dict:
         return result
 
 def is_notation_valid(command: dict, strict: bool = True) -> bool:
-    """Assert that notation declares either castling,
-    """
+    """Assert that notation is valid"""
     move = command['move']
-
     if strict and not move['piece']:
         return False
 

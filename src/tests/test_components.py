@@ -344,8 +344,8 @@ class TestBishop:
         assert 1 == len(indices)
 
 
-class TestKing:
-    def test_bishop_get_defended_moves(self):
+class TestKnight:
+    def test_knight_get_defended_moves(self):
         k1 = Knight(Column.E, 4, Color.BLACK)
         pieces = [
             k1,
@@ -373,7 +373,7 @@ class TestKing:
             assert position_to_index(move) in indices
         assert 8 == len(indices)
 
-    def test_bishop_get_attacking_moves(self):
+    def test_knight_get_attacking_moves(self):
         k1 = Knight(Column.E, 4, Color.WHITE)
         pieces = [
             k1,
@@ -401,7 +401,7 @@ class TestKing:
             assert position_to_index(move) in indices
         assert 8 == len(indices)
 
-    def test_bishop_get_possible_moves(self):
+    def test_knight_get_possible_moves(self):
         k1 = Knight(Column.E, 4, Color.BLACK)
         pieces = [
             k1,
@@ -510,7 +510,41 @@ class TestKing:
         ]
         b = Board(board)
         white = Player(Color.WHITE, [])
-        assert not k1.get_possible_moves_position(b, white)
+        black = Player(Color.BLACK, board)
+        assert not k1.get_possible_moves_position(b, black, white)
+
+    def test_king_castle(self):
+        bk = King(Column.E, 8, Color.BLACK)
+        wk = King(Column.E, 1, Color.WHITE)
+        white_pieces = [
+            wk,
+            Rook(Column.A, 1, Color.WHITE),
+            Rook(Column.H, 1, Color.WHITE),
+        ]
+        black_pieces = [
+            bk,
+            Rook(Column.A, 8, Color.BLACK),
+            Rook(Column.H, 8, Color.BLACK),
+        ]
+        board = [*white_pieces, *black_pieces]
+        b = Board(board)
+        white = Player(Color.WHITE, white_pieces)
+        black = Player(Color.BLACK, black_pieces)
+
+        print(black.color)
+        print(wk.color)
+        assert Position(Column.F, 1) in wk.get_possible_moves_position(
+            b, white, black
+        )
+        assert Position(Column.C, 1) in wk.get_possible_moves_position(
+            b, white, black
+        )
+        assert Position(Column.F, 8) in bk.get_possible_moves_position(
+            b, black, white
+        )
+        assert Position(Column.C, 8) in bk.get_possible_moves_position(
+            b, black, white
+        )
 
     def test_king_surrounded_diff_color(self):
         k1 = King(Column.D, 4, Color.BLACK)
@@ -525,16 +559,17 @@ class TestKing:
             Pawn(Column.C, 4, Color.WHITE),
         ]
         white = Player(Color.WHITE, player)
+        black = Player(Color.BLACK, [])
         player.append(k1)
         b = Board(player)
 
-        moves = k1.get_possible_moves_position(b, white)
+        moves = k1.get_possible_moves_position(b, black, white)
         print("king moves: {}".format(moves))
 
-        white_defended = white.get_defended_positions(b)
+        white_defended = white.get_defended_positions(b, black)
         print("defended: {}".format(white_defended))
         print(b.prettify())
-        white.print_defended_positions(b)
+        white.print_defended_positions(b, black)
         for move in white_defended:
             assert move not in moves
         assert (Column.C, 5) in moves
@@ -592,11 +627,16 @@ class TestPlayer:
         ]
         b = Board(board)
         player = Player(Color.WHITE, board)
-        defended_positions = player.get_defended_positions(b)
+        other_player = Player(Color.BLACK, [])
+        defended_positions = player.get_defended_positions(b, other_player)
         assert (Column.B, 6) in defended_positions
         assert (Column.D, 6) in defended_positions
-        assert player.is_defending_position(b, Column.B, 6)
-        assert player.is_defending_position(b, Column.D, 6)
+        assert player.is_defending_position(
+            b, Position(Column.B, 6), other_player
+        )
+        assert player.is_defending_position(
+            b, Position(Column.D, 6), other_player
+        )
         assert 2 == len(defended_positions)
 
     def test_player_is_defending_pawn_line(self):
@@ -611,7 +651,8 @@ class TestPlayer:
         ]
         b = Board(board)
         player = Player(Color.WHITE, board)
-        defended_positions = player.get_defended_positions(b)
+        other_player = Player(Color.BLACK, [])
+        defended_positions = player.get_defended_positions(b, other_player)
         assert (Column.A, 3) in defended_positions
         assert (Column.B, 3) in defended_positions
         assert (Column.C, 3) in defended_positions
@@ -622,4 +663,4 @@ class TestPlayer:
 
         assert 8 == len(defended_positions)
         print(b.prettify())
-        player.print_defended_positions(b)
+        player.print_defended_positions(b, other_player)

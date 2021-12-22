@@ -5,6 +5,7 @@
 clean:
 	find -name __pycache__ -type d -exec rm -rf {} +
 	rm -rf logs
+	rm -rf .pytest_cache/
 
 .PHONY fmt:
 fmt:

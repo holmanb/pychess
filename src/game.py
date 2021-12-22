@@ -55,12 +55,13 @@ DEFAULT_BLACK = [
 
 class Chess:
     def __init__(
-            self,
-            get_white_move,
-            get_black_move,
-            white_position=DEFAULT_WHITE,
-            black_position=DEFAULT_BLACK,
-            color=None):
+        self,
+        get_white_move,
+        get_black_move,
+        white_position=DEFAULT_WHITE,
+        black_position=DEFAULT_BLACK,
+        color=None,
+    ):
         """Chess game. Has a game loop for two players. Alternatively may be
         used as a chess engine to play against
 
@@ -81,8 +82,7 @@ class Chess:
         print("init")
 
     def loop(self):
-        """Game loop
-        """
+        """Game loop"""
         print("init")
         try:
             turn = Color.WHITE
