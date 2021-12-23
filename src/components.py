@@ -150,11 +150,6 @@ class Piece:
         """Indices that the king may not move into"""
         raise NotImplementedError()
 
-    def get_defended_moves_position(self, b, *_args) -> List[Index]:
-        return list(
-            map(partial(index_to_position, b), self.get_defended_moves_index)
-        )
-
     def __str__(self) -> str:
         """For testing"""
         return "X"
@@ -374,7 +369,6 @@ def get_indices_in_line(
                 o.append(derived_index)
         else:
             break
-
     return o
 
 
@@ -585,7 +579,6 @@ class King(Piece):
             if Color.WHITE == self.color:
                 # KCastle
                 k_rook = get_position(board, Position(Column.H, 1))
-                q_rook = get_position(board, Position(Column.A, 1))
 
                 # Check that kingside rook hasn't moved and squares are open
                 # and not under attack
@@ -607,6 +600,8 @@ class King(Piece):
                         out.append(position_to_index(Position(Column.G, 1)))
 
                 # QCastle
+                q_rook = get_position(board, Position(Column.A, 1))
+
                 positions = [Position(Column.C, 1), Position(Column.D, 1)]
                 if q_rook and not q_rook.has_moved:
                     legal = True
@@ -959,7 +954,6 @@ class Player:
     def is_defending_position(
         self, b: Board, position: Position, other_player
     ) -> bool:
-        print("checking for position {}".format(position))
         return self.is_defending_index(
             b, position_to_index(position), other_player
         )
@@ -995,7 +989,9 @@ class Player:
                 "No piece at {}{}".format(start["file"], start["rank"])
             )
         # Check that piece is correct type
-        elif not isinstance(src_piece, piece_notation_to_class[move["piece"]]):
+        elif move.get("piece") and not isinstance(
+            src_piece, piece_notation_to_class[move["piece"]]
+        ):
             raise ValueError(
                 "Piece at {}{} is not of type {}".format(
                     start["file"], start["rank"], start["piece"]
@@ -1018,13 +1014,12 @@ class Player:
         # Check that requested destination is legal
         if dst_pos not in moves:
             raise ValueError(
-                "Requested move [{}] is not legal".format(dst_pos)
+                f"Requested move {dst_pos} for piece {src_piece} "
+                f"is not in legal movelist: {moves}"
             )
 
-        # Handle taking opponent's piece
+        # Check that not moving to same color
         elif dst_piece is not None:
-
-            # Check that not moving to same color
             if dst_piece.color is self.color:
                 raise ValueError(
                     "Piece {} at {} is same color({}),"
@@ -1036,7 +1031,9 @@ class Player:
     def do_castle(
         self, board: Board, other_player, dst_pos: Position, rank: int
     ):
-        """position rules are identical besides rank"""
+        """king move done, need to move the rook
+        position rules are identical besides rank
+        """
         if dst_pos == Position(Column.G, rank):
             self.do_move(
                 {
@@ -1046,11 +1043,12 @@ class Player:
                     },
                     "end": {
                         "file": "f",
-                        "rank": 1,
+                        "rank": rank,
                     },
                 },
                 board,
                 other_player,
+                verify=False,
             )
         elif dst_pos == Position(Column.C, rank):
             self.do_move(
@@ -1066,11 +1064,12 @@ class Player:
                 },
                 board,
                 other_player,
+                verify=False,
             )
         else:
             raise ValueError(f"Invalid castling destination: {dst_pos}")
 
-    def do_move(self, move: dict, board: Board, other_player):
+    def do_move(self, move: dict, board: Board, other_player, verify=True):
         """Move piece and update accounting in board, players, and piece"""
         start = move["start"]
         end = move["end"]
@@ -1087,10 +1086,12 @@ class Player:
         # Get piece at destination position
         dst_piece = get_position(board, dst_pos)
 
-        # Check for errors
-        self._verify_do_move(
-            move, board, other_player, dst_pos, src_piece, dst_piece
-        )
+        # Skip move verification for castling - we already did that
+        if verify:
+            # Check for errors
+            self._verify_do_move(
+                move, board, other_player, dst_pos, src_piece, dst_piece
+            )
 
         # Handle taking opponent's piece
         if dst_piece is not None:

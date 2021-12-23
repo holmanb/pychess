@@ -1,5 +1,6 @@
 from typing import List
 
+import pytest
 from pytest import raises
 
 from ..components import (
@@ -533,16 +534,87 @@ class TestKing:
 
         print(black.color)
         print(wk.color)
-        assert Position(Column.F, 1) in wk.get_possible_moves_position(
+        assert Position(Column.G, 1) in wk.get_possible_moves_position(
             b, white, black
         )
         assert Position(Column.C, 1) in wk.get_possible_moves_position(
             b, white, black
         )
-        assert Position(Column.F, 8) in bk.get_possible_moves_position(
+        assert Position(Column.G, 8) in bk.get_possible_moves_position(
             b, black, white
         )
         assert Position(Column.C, 8) in bk.get_possible_moves_position(
+            b, black, white
+        )
+
+    @pytest.mark.parametrize(
+        "rank,color", [(1, Color.WHITE), (8, Color.BLACK)]
+    )
+    @pytest.mark.parametrize(
+        "cmd_start,cmd_end,file",
+        [
+            ("e", "g", Column.G),
+            ("e", "c", Column.C),
+        ],
+    )
+    def test_king_castle_position(self, rank, color, cmd_start, cmd_end, file):
+        other_color = Color.WHITE if color == Color.BLACK else Color.BLACK
+        wk = King(Column.E, rank, color)
+        white_pieces = [
+            wk,
+            Rook(Column.A, rank, color),
+            Rook(Column.H, rank, color),
+        ]
+        b = Board(white_pieces)
+        black = Player(other_color, [])
+        white = Player(color, white_pieces)
+        white.do_move(
+            {
+                "start": {
+                    "file": cmd_start,
+                    "rank": rank,
+                },
+                "end": {
+                    "file": cmd_end,
+                    "rank": rank,
+                },
+            },
+            b,
+            black,
+        )
+        assert Position(file, rank) == index_to_position(wk.index)
+
+    def test_king_no_castle(self):
+        bk = King(Column.E, 8, Color.BLACK)
+        wk = King(Column.E, 1, Color.WHITE)
+        white_pieces = [
+            wk,
+            Rook(Column.A, 1, Color.WHITE),
+            Rook(Column.H, 1, Color.WHITE),
+            Bishop(Column.E, 7, Color.WHITE),
+        ]
+        black_pieces = [
+            bk,
+            Rook(Column.A, 8, Color.BLACK),
+            Rook(Column.H, 8, Color.BLACK),
+            Bishop(Column.E, 2, Color.BLACK),
+        ]
+        board = [*white_pieces, *black_pieces]
+        b = Board(board)
+        white = Player(Color.WHITE, white_pieces)
+        black = Player(Color.BLACK, black_pieces)
+
+        print(b.prettify())
+        assert Position(Column.G, 1) not in wk.get_possible_moves_position(
+            b, white, black
+        )
+        assert Position(Column.C, 1) not in wk.get_possible_moves_position(
+            b, white, black
+        )
+        assert Position(Column.G, 8) not in bk.get_possible_moves_position(
+            b, black, white
+        )
+        assert Position(Column.C, 8) not in bk.get_possible_moves_position(
             b, black, white
         )
 

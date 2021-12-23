@@ -27,14 +27,12 @@ class TestPrompt:
             "",
         ],
     )
-    @pytest.mark.parametrize("capture", ["x", " ", "#" "+"])
     @pytest.mark.parametrize("rank1", rank)
     @pytest.mark.parametrize("rank2", rank)
     @pytest.mark.parametrize("file1", file)
     @pytest.mark.parametrize("file2", file)
-    def test_valid_prompt(self, capture, piece, rank1, rank2, file1, file2):
+    def test_valid_prompt(self, piece, rank1, rank2, file1, file2):
         arg = f"{piece} {file1}{rank1} {file2}{rank2}"
-        print(arg)
         if not (rank1 == rank2 and file1 == file2):
             assert is_notation_valid(parse(arg))
         else:
