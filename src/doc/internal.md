@@ -8,6 +8,7 @@ components.py - class definitions for the board, players, and piece types
 doc/
 game.py       - simple cli chess game loop composed of the components
 Makefile
+logs/         - currently just UCI logs (TODO: make this less noisy)
 prompt.py     - parser for user input
 tests/
 uci.py        - UCI protocol implementation
