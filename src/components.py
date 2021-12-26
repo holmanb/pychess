@@ -965,12 +965,25 @@ class Player:
         return self.get_material(board)
 
     def is_attacking_index(self, b: Board, index: Index, other_player):
+        return index in self.get_attacking_indices(b, other_player)
+
+    def get_attacking_indices(self, b: Board, other_player) -> List[Index]:
+        if other_player.color == self.color:
+            raise ValueError("Need opposite player to verify checkness")
+        out = []
         for index in self.index_list:
             piece = b.board[index.x][index.y]
             for move in piece.get_attacking_moves_index(b, self, other_player):
-                if index in move:
-                    return True
-        return False
+                out.append(move)
+        # Todo: Maybe don't remove dups for detecting double check?
+        return list(set(out))
+
+    def get_attacking_positions(
+            self, b: Board, other_player) -> List[Position]:
+        return [
+            index_to_position(index)
+            for index in self.get_attacking_indices(b, other_player)
+        ]
 
     def get_defended_indices(self, b: Board, other_player) -> List[Index]:
         if other_player.color == self.color:

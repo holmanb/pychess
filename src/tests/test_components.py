@@ -130,7 +130,7 @@ class TestPawn:
 
 
 class TestRook:
-    def test_castle_surrounded_same_color(self):
+    def test_rook_surrounded_same_color(self):
         c1 = Rook(Column.B, 2, Color.BLACK)
         board = [
             c1,
@@ -142,7 +142,7 @@ class TestRook:
         b = Board(board)
         assert not c1.get_possible_moves_position(b)
 
-    def test_castle_up_down(self):
+    def test_rook_up_down(self):
         c1 = Rook(Column.B, 2, Color.BLACK)
         board = [
             c1,
@@ -160,7 +160,7 @@ class TestRook:
         assert (Column.B, 8) in moves
         assert 7 == len(moves)
 
-    def test_castle_left_right(self):
+    def test_rook_left_right(self):
         c1 = Rook(Column.B, 2, Color.BLACK)
         board = [
             c1,
@@ -178,7 +178,7 @@ class TestRook:
         assert (Column.H, 2) in moves
         assert 7 == len(moves)
 
-    def test_castle_surrounded_opposite_color(self):
+    def test_rook_surrounded_opposite_color(self):
         c1 = Rook(Column.B, 2, Color.BLACK)
         board = [
             c1,
@@ -195,7 +195,7 @@ class TestRook:
         assert (Column.B, 3) in moves
         assert 4 == len(moves)
 
-    def test_castle_partially_blocked(self):
+    def test_rook_partially_blocked(self):
         c1 = Rook(Column.D, 4, Color.BLACK)
         board = [
             c1,
@@ -605,7 +605,6 @@ class TestKing:
         white = Player(Color.WHITE, white_pieces)
         black = Player(Color.BLACK, black_pieces)
 
-        print(b.prettify())
         assert Position(Column.G, 1) not in wk.get_possible_moves_position(
             b, white, black
         )
@@ -766,21 +765,72 @@ class TestPlayer:
         defended_positions = chess.white.get_possible_moves_position(
             chess.board, chess.black
         )
-        assert (Column.A, 3) in defended_positions
-        assert (Column.B, 3) in defended_positions
-        assert (Column.C, 3) in defended_positions
-        assert (Column.D, 3) in defended_positions
-        assert (Column.E, 3) in defended_positions
-        assert (Column.F, 3) in defended_positions
-        assert (Column.G, 3) in defended_positions
+        pieces = [
+            Piece(end.x, end.y, Color.WHITE) for _, end in defended_positions]
+
+        b = Board(pieces)
+        legal_positions = [
+            # Pawn Move 1
+            ((Column.A, 2), (Column.A, 3)),
+            ((Column.B, 2), (Column.B, 3)),
+            ((Column.C, 2), (Column.C, 3)),
+            ((Column.D, 2), (Column.D, 3)),
+            ((Column.E, 2), (Column.E, 3)),
+            ((Column.F, 2), (Column.F, 3)),
+            ((Column.G, 2), (Column.G, 3)),
+            ((Column.H, 2), (Column.H, 3)),
+
+            # Pawn Move 2
+            ((Column.A, 2), (Column.A, 4)),
+            ((Column.B, 2), (Column.B, 4)),
+            ((Column.C, 2), (Column.C, 4)),
+            ((Column.D, 2), (Column.D, 4)),
+            ((Column.E, 2), (Column.E, 4)),
+            ((Column.F, 2), (Column.F, 4)),
+            ((Column.G, 2), (Column.G, 4)),
+            ((Column.H, 2), (Column.H, 4)),
+
+            # Knight
+            ((Column.B, 1), (Column.A, 3)),
+            ((Column.B, 1), (Column.C, 3)),
+            ((Column.G, 1), (Column.F, 3)),
+            ((Column.G, 1), (Column.H, 3)),
+        ]
+        for position in legal_positions:
+            assert position in defended_positions
+        assert len(legal_positions) == len(defended_positions)
 
         defended_positions = chess.black.get_possible_moves_position(
             chess.board, chess.white
         )
-        assert (Column.A, 6) in defended_positions
-        assert (Column.B, 6) in defended_positions
-        assert (Column.C, 6) in defended_positions
-        assert (Column.D, 6) in defended_positions
-        assert (Column.E, 6) in defended_positions
-        assert (Column.F, 6) in defended_positions
-        assert (Column.G, 6) in defended_positions
+        legal_positions = [
+
+            # Pawn Move 1
+            ((Column.A, 7), (Column.A, 6)),
+            ((Column.B, 7), (Column.B, 6)),
+            ((Column.C, 7), (Column.C, 6)),
+            ((Column.D, 7), (Column.D, 6)),
+            ((Column.E, 7), (Column.E, 6)),
+            ((Column.F, 7), (Column.F, 6)),
+            ((Column.G, 7), (Column.G, 6)),
+            ((Column.H, 7), (Column.H, 6)),
+
+            # Pawn Move 2
+            ((Column.A, 7), (Column.A, 5)),
+            ((Column.B, 7), (Column.B, 5)),
+            ((Column.C, 7), (Column.C, 5)),
+            ((Column.D, 7), (Column.D, 5)),
+            ((Column.E, 7), (Column.E, 5)),
+            ((Column.F, 7), (Column.F, 5)),
+            ((Column.G, 7), (Column.G, 5)),
+            ((Column.H, 7), (Column.H, 5)),
+
+            # Knight
+            ((Column.B, 8), (Column.A, 6)),
+            ((Column.B, 8), (Column.C, 6)),
+            ((Column.G, 8), (Column.F, 6)),
+            ((Column.G, 8), (Column.H, 6)),
+        ]
+        for position in legal_positions:
+            assert position in defended_positions
+        assert len(legal_positions) == len(defended_positions)
