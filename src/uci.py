@@ -37,9 +37,22 @@ def bestmove(position: str):
 
 
 def position_valid_or_raise(pos: str):
-    if 4 != len(pos):
-        raise ValueError("Invalid position, expected 4 characters in string")
-    for i, char in enumerate(pos):
+
+    # Promote
+    if 5 == len(pos):
+        move = pos[:4]
+        promote = pos[4]
+        if promote not in ["q", "r", "b", "n"]:
+            raise ValueError(f"Invalid promote {promote}")
+    else:
+        move = pos
+
+    if 4 != len(move):
+        raise ValueError(
+            "Invalid position: "
+            f'expected 4 characters in move string, received "{move}"'
+        )
+    for i, char in enumerate(move):
         match char:
             case ("a" | "b" | "c" | "d" | "e" | "f" | "g" | "h"):
                 # odd
@@ -91,8 +104,7 @@ def parse_command(cmd, state: dict) -> Tuple[bool, Union[List[dict], bool]]:
         case ["position", "startpos", "moves", *moves]:
             move_list = []
             for move in moves:
-                if 4 != len(move):
-                    raise ValueError(f"Unexpected fenstring detected: {move}")
+                promote = move[4] if 5 == len(move) else None
                 position_valid_or_raise(move)
                 move_list.append(
                     {
@@ -105,6 +117,7 @@ def parse_command(cmd, state: dict) -> Tuple[bool, Union[List[dict], bool]]:
                                 "file": move[2],
                                 "rank": move[3],
                             },
+                            "promote": promote,
                         },
                     }
                 )

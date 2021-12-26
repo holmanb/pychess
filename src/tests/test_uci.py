@@ -41,6 +41,11 @@ class TestUCI:
             assert position_valid_or_raise("a0")
         with pytest.raises(ValueError):
             assert position_valid_or_raise("10")
+        # Promote
+        position_valid_or_raise("b7a8r")
+
+        # Normal move
+        position_valid_or_raise("e2e4")
 
     def test_parse_command(self, capsys, *_args):
         try:

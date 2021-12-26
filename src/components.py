@@ -1107,6 +1107,7 @@ class Player:
                         "file": "f",
                         "rank": rank,
                     },
+                    "promote": None,
                 },
                 board,
                 other_player,
@@ -1123,6 +1124,7 @@ class Player:
                         "file": "d",
                         "rank": rank,
                     },
+                    "promote": None,
                 },
                 board,
                 other_player,
@@ -1160,6 +1162,16 @@ class Player:
 
             # Remove piece from other player's index
             other_player.remove_piece_index(position_to_index(dst_pos))
+
+        # Pawn promotion
+        if move["promote"]:
+            old_src = src_piece
+            src_piece = piece_notation_to_class[move["promote"].upper()](
+                src_pos.x, src_pos.y, old_src.color
+            )
+
+            # Replace old piece
+            board.set_position(src_pos, src_piece)
 
         # Update this player's accounting
         self.update_piece_position(src_piece, dst_pos)

@@ -578,6 +578,7 @@ class TestKing:
                     "file": cmd_end,
                     "rank": rank,
                 },
+                "promote": None,
             },
             b,
             black,
@@ -736,7 +737,7 @@ class TestPlayer:
 
         assert 8 == len(defended_positions)
 
-    def test_chess_defended_positions_begining(self):
+    def test_chess_defended_positions_beginning(self):
         chess = Chess()
         defended_positions = chess.white.get_defended_positions(
             chess.board, chess.black
@@ -760,7 +761,7 @@ class TestPlayer:
         assert (Column.F, 6) in defended_positions
         assert (Column.G, 6) in defended_positions
 
-    def test_chess_possible_positions_begining(self):
+    def test_chess_possible_positions_beginning(self):
         chess = Chess()
         defended_positions = chess.white.get_possible_moves_position(
             chess.board, chess.black
