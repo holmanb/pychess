@@ -3,6 +3,7 @@ from typing import List
 import pytest
 from pytest import raises
 
+from ..game import Chess
 from ..components import (
     Color,
     Piece,
@@ -50,7 +51,6 @@ class TestPieces:
         p1 = Piece(Column.A, 1, Color.BLACK)
         p2 = Piece(Column.A, 2, Color.WHITE)
         b = Board([p1, p2])
-        print(b.prettify())
         assert p2 == p1.get_relative_index(b, 0, 1)
         assert p1 == p2.get_relative_index(b, 0, -1)
 
@@ -582,7 +582,7 @@ class TestKing:
             b,
             black,
         )
-        assert Position(file, rank) == index_to_position(wk.index)
+        assert Position(file, rank) == index_to_position(white.king_index)
 
     def test_king_no_castle(self):
         bk = King(Column.E, 8, Color.BLACK)
@@ -725,6 +725,7 @@ class TestPlayer:
         player = Player(Color.WHITE, board)
         other_player = Player(Color.BLACK, [])
         defended_positions = player.get_defended_positions(b, other_player)
+        player.print_defended_positions(b, other_player)
         assert (Column.A, 3) in defended_positions
         assert (Column.B, 3) in defended_positions
         assert (Column.C, 3) in defended_positions
@@ -734,5 +735,51 @@ class TestPlayer:
         assert (Column.G, 3) in defended_positions
 
         assert 8 == len(defended_positions)
-        print(b.prettify())
-        player.print_defended_positions(b, other_player)
+
+    def test_chess_defended_positions_begining(self):
+        chess = Chess()
+        defended_positions = chess.white.get_defended_positions(
+            chess.board, chess.black
+        )
+        assert (Column.A, 3) in defended_positions
+        assert (Column.B, 3) in defended_positions
+        assert (Column.C, 3) in defended_positions
+        assert (Column.D, 3) in defended_positions
+        assert (Column.E, 3) in defended_positions
+        assert (Column.F, 3) in defended_positions
+        assert (Column.G, 3) in defended_positions
+
+        defended_positions = chess.black.get_defended_positions(
+            chess.board, chess.white
+        )
+        assert (Column.A, 6) in defended_positions
+        assert (Column.B, 6) in defended_positions
+        assert (Column.C, 6) in defended_positions
+        assert (Column.D, 6) in defended_positions
+        assert (Column.E, 6) in defended_positions
+        assert (Column.F, 6) in defended_positions
+        assert (Column.G, 6) in defended_positions
+
+    def test_chess_possible_positions_begining(self):
+        chess = Chess()
+        defended_positions = chess.white.get_possible_moves_position(
+            chess.board, chess.black
+        )
+        assert (Column.A, 3) in defended_positions
+        assert (Column.B, 3) in defended_positions
+        assert (Column.C, 3) in defended_positions
+        assert (Column.D, 3) in defended_positions
+        assert (Column.E, 3) in defended_positions
+        assert (Column.F, 3) in defended_positions
+        assert (Column.G, 3) in defended_positions
+
+        defended_positions = chess.black.get_possible_moves_position(
+            chess.board, chess.white
+        )
+        assert (Column.A, 6) in defended_positions
+        assert (Column.B, 6) in defended_positions
+        assert (Column.C, 6) in defended_positions
+        assert (Column.D, 6) in defended_positions
+        assert (Column.E, 6) in defended_positions
+        assert (Column.F, 6) in defended_positions
+        assert (Column.G, 6) in defended_positions

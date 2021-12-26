@@ -1,5 +1,6 @@
 #!/usr/bin/env python3.10
 
+from typing import List
 from prompt import read_move
 from components import (
     Color,
@@ -12,6 +13,7 @@ from components import (
     King,
     Queen,
     Pawn,
+    positions_to_cmd,
 )
 
 DEFAULT_WHITE = [
@@ -56,11 +58,10 @@ DEFAULT_BLACK = [
 class Chess:
     def __init__(
         self,
-        get_white_move,
-        get_black_move,
+        get_white_move=None,
+        get_black_move=None,
         white_position=DEFAULT_WHITE,
         black_position=DEFAULT_BLACK,
-        color=None,
     ):
         """Chess game. Has a game loop for two players. Alternatively may be
         used as a chess engine to play against
@@ -78,8 +79,7 @@ class Chess:
         self.black: Player = Player(Color.BLACK, black_position)
         self.black_input = get_black_move
         self.white_input = get_white_move
-        self.color = color
-        print("init")
+        self.move_color = Color.WHITE
 
     def loop(self):
         """Game loop"""
@@ -105,11 +105,19 @@ class Chess:
                             user_in = self.white_input()
                             self.white.move(user_in, self.board, self.black)
                         else:
-                            best_move = self.white.get_best_move()
+                            best_move = self.white.get_best_move(
+                                self.board, self.black
+                            )
                             self.white.move(best_move, self.board, self.black)
                     elif turn == Color.BLACK:
-                        user_in = self.black_input()
-                        self.black.move(user_in, self.board, self.white)
+                        if self.black_input:
+                            user_in = self.black_input()
+                            self.black.move(user_in, self.board, self.white)
+                        else:
+                            best_move = self.black.get_best_move(
+                                self.board, self.black
+                            )
+                            self.black.move(best_move, self.board, self.white)
 
                     # Switch turns
                     turn = Color.BLACK if turn == Color.WHITE else Color.WHITE
@@ -118,14 +126,21 @@ class Chess:
         except KeyboardInterrupt:
             print()
 
-    def get_best_move(self, opponent_move: dict) -> dict:
+    def get_best_move(self, opponent_moves: List[dict]) -> str:
         # Update state with opponent's move
-        if self.color == Color.WHITE:
-            self.black.move(opponent_move, self.board, self.black)
-            return self.black.get_best_move()
-        elif self.color == Color.BLACK:
-            self.white.move(opponent_move, self.board, self.white)
-            return self.white.get_best_move()
+        for opponent_move in opponent_moves:
+            if self.move_color == Color.WHITE:
+                self.white.move(opponent_move, self.board, self.black)
+                self.move_color = Color.BLACK
+            elif self.move_color == Color.BLACK:
+                self.black.move(opponent_move, self.board, self.white)
+                self.move_color = Color.WHITE
+
+        if self.move_color == Color.WHITE:
+            return self.white.get_best_move(self.board, self.black)
+        elif self.move_color == Color.BLACK:
+            return self.black.get_best_move(self.board, self.white)
+        raise ValueError("Invalid color")
 
 
 if __name__ == "__main__":

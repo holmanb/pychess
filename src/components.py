@@ -1,5 +1,7 @@
+import copy
+import random
 from enum import Enum, IntEnum
-from typing import Union, List, Any
+from typing import Union, List, Any, Tuple
 from collections import namedtuple
 
 Index = namedtuple("Index", ("x", "y"))
@@ -119,6 +121,15 @@ class Piece:
         index_valid_or_raise(self.index)
         self.color = color
         self.has_moved = False
+
+    def __eq__(self, other):
+        if isinstance(other, type(self)):
+            return (
+                self.index == other.index
+                and self.color == other.color
+                and self.has_moved == other.has_moved
+            )
+        return False
 
     def get_position(self):
         return index_to_position(self.index)
@@ -718,20 +729,12 @@ class Board:
 
         self.board: List[List]
         self.board = [[None for _ in range(8)] for _ in range(8)]
-        for piece in pieces:
+        for piece in copy.deepcopy(pieces):
             self.init_piece(piece, piece.index)
 
     def init_piece(self, piece, index: Index):
         index_valid_or_raise(index)
         self.board[piece.index.x][piece.index.y] = piece
-
-    def validate_pieces(self, pieces: List):
-        if not isinstance(pieces, List):
-            raise TypeError("Invalid type: {}".format(type(pieces)))
-
-        for piece in pieces:
-            if not isinstance(pieces, Piece):
-                raise TypeError("Invalid type: {}".format(type(pieces)))
 
     def is_index_under_attack(self, player, index: Index, other_player):
         """Attacking indexes are ones which a king may not move into"""
@@ -841,6 +844,39 @@ piece_str_to_column = {
     "h": Column.H,
 }
 
+piece_column_to_str = {
+    Column.A: "a",
+    Column.B: "b",
+    Column.C: "c",
+    Column.D: "d",
+    Column.E: "e",
+    Column.F: "f",
+    Column.G: "g",
+    Column.H: "h",
+}
+
+
+def positions_to_cmd(src_pos: Position, dst_pos: Position):
+    return {
+        "start": {
+            "file": piece_column_to_str[src_pos.x],
+            "rank": str(src_pos.y),
+        },
+        "end": {
+            "file": piece_column_to_str[dst_pos.x],
+            "rank": str(dst_pos.y),
+        },
+    }
+
+
+def positions_to_uci_str(src_pos: Position, dst_pos: Position) -> str:
+    return "{}{}{}{}".format(
+        piece_column_to_str[src_pos.x],
+        str(src_pos.y),
+        piece_column_to_str[dst_pos.x],
+        str(dst_pos.y),
+    )
+
 
 def cmd_to_position(cmd: dict):
     """Map command notation to position"""
@@ -854,6 +890,8 @@ class Player:
     """
 
     def __init__(self, color: Color, pieces: List):
+        # Seed randomness for move selection
+        random.seed()
         self.index_list: List[Index] = []
         self.color: Color = color
         self.KCastle = True
@@ -866,32 +904,52 @@ class Player:
             if isinstance(piece, King):
                 self.king_index = piece.index
 
-    def get_best_move(self) -> dict:
+    def get_best_move(self, board: Board, other_player) -> str:
+        """Current strategy: random"""
+        possible_moves = self.get_possible_moves_position(board, other_player)
+        select = random.randrange(len(possible_moves))
+        moves = possible_moves[select]
+        return positions_to_uci_str(moves[0], moves[1])
 
-        return {
-            "QCastle": None,
-            "KCastle": None,
-            "move": {
-                "capture": None,
-                "piece": None,
-                "start": {
-                    "file": None,
-                    "rank": None,
-                },
-                "end": {
-                    "file": None,
-                    "rank": None,
-                },
-            },
-        }
+    def get_possible_moves_index(
+        self, b, other_player=None
+    ) -> List[Tuple[Index, Index]]:
+        """Iterate over all pieces and get a list of Tuples with (src, dst)
+        positions
+        """
+        moves: List[Tuple[Index, Index]] = []
+
+        for index in self.index_list:
+            piece = b.board[index.x][index.y]
+            piece_moves = piece.get_possible_moves_index(
+                b, player=self, other_player=other_player
+            )
+            for piece in piece_moves:
+                moves.append((index, piece))
+        if not moves:
+            raise ValueError("This means stalemate, but for now we raise")
+        return moves
+
+    def get_possible_moves_position(
+        self, b, other_player=None
+    ) -> List[Tuple[Position, Position]]:
+        """Iterate over all pieces and get a list of Tuples with (src, dst)
+        positions
+        """
+        positions = []
+        for (start, end) in self.get_possible_moves_index(
+            b, other_player=other_player
+        ):
+            positions.append(
+                (index_to_position(start), index_to_position(end))
+            )
+        return positions
 
     def get_material(self, board: Board) -> int:
         score = 0
         for index in self.index_list:
             piece = get_index(board, index)
             if not piece:
-                print(board.prettify())
-                print(self.index_list)
                 raise ValueError(
                     "Accounting error, no piece at position: {}".format(
                         index_to_position(index)
@@ -986,7 +1044,9 @@ class Player:
         # Check that source piece exists
         if not src_piece:
             raise ValueError(
-                "No piece at {}{}".format(start["file"], start["rank"])
+                "No piece at {}{}\n{}".format(
+                    start["file"], start["rank"], board.prettify()
+                )
             )
         # Check that piece is correct type
         elif move.get("piece") and not isinstance(
@@ -1033,6 +1093,8 @@ class Player:
     ):
         """king move done, need to move the rook
         position rules are identical besides rank
+
+        Mock user input and call do_move() without verification
         """
         if dst_pos == Position(Column.G, rank):
             self.do_move(
@@ -1124,9 +1186,4 @@ class Player:
         board.clear_position(src_pos)
 
     def move(self, move: dict, board: Board, other_player):
-        if move["QCastle"]:
-            raise NotImplementedError()
-        elif move["KCastle"]:
-            raise NotImplementedError()
-        else:
-            self.do_move(move["move"], board, other_player)
+        self.do_move(move["move"], board, other_player)

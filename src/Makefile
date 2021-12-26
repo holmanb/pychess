@@ -9,7 +9,7 @@ clean:
 
 .PHONY fmt:
 fmt:
-	black --line-length 79 .
+	black --line-length 79 --target-version py310 --fast .
 
 .PHONY pytest:
 test:
