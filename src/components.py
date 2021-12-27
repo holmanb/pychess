@@ -606,7 +606,9 @@ class King(Piece):
                             break
 
                     if not isinstance(k_rook, Rook):
-                        raise ValueError("This shouldn't be possible")
+                        raise ValueError(
+                            "Not rook: this shouldn't be possible"
+                        )
                     if legal:
                         out.append(position_to_index(Position(Column.G, 1)))
 
@@ -626,7 +628,9 @@ class King(Piece):
                             break
 
                     if not isinstance(q_rook, Rook):
-                        raise ValueError("This shouldn't be possible")
+                        raise ValueError(
+                            "Not rook: this shouldn't be possible"
+                        )
                     if legal:
                         out.append(position_to_index(Position(Column.C, 1)))
 
@@ -650,7 +654,9 @@ class King(Piece):
                             break
 
                     if not isinstance(k_rook, Rook):
-                        raise ValueError("This shouldn't be possible")
+                        raise ValueError(
+                            "Not rook: this shouldn't be possible"
+                        )
                     if legal:
                         out.append(position_to_index(Position(Column.G, 8)))
 
@@ -668,7 +674,9 @@ class King(Piece):
                             break
 
                     if not isinstance(q_rook, Rook):
-                        raise ValueError("This shouldn't be possible")
+                        raise ValueError(
+                            "Not rook: this shouldn't be possible"
+                        )
                     if legal:
                         out.append(position_to_index(Position(Column.C, 8)))
         return list(
@@ -743,6 +751,9 @@ class Board:
     def is_defending_index(self, player, index: Index, other_player):
         """Defended indexes are ones which a king may not move into"""
         player.is_defending_index(self, index, other_player)
+
+    def get_index(self, index: Index):
+        return self.board[index.x][index.y]
 
     def set_index(self, index: Index, piece: Piece) -> None:
         self.board[index.x][index.y] = piece
@@ -856,6 +867,12 @@ piece_column_to_str = {
 }
 
 
+def indices_to_cmd(src_index: Index, dst_index: Index):
+    return positions_to_cmd(
+        index_to_position(src_index), index_to_position(dst_index)
+    )
+
+
 def positions_to_cmd(src_pos: Position, dst_pos: Position):
     return {
         "start": {
@@ -866,6 +883,7 @@ def positions_to_cmd(src_pos: Position, dst_pos: Position):
             "file": piece_column_to_str[dst_pos.x],
             "rank": str(dst_pos.y),
         },
+        "promote": None,
     }
 
 
@@ -891,8 +909,9 @@ class Player:
 
     def __init__(self, color: Color, pieces: List):
         # Seed randomness for move selection
-        random.seed()
+        self.king_index: Index = None
         self.index_list: List[Index] = []
+        random.seed()
         self.color: Color = color
         self.KCastle = True
         self.QCastle = True
@@ -904,12 +923,37 @@ class Player:
             if isinstance(piece, King):
                 self.king_index = piece.index
 
+    def in_check(self, b, other_player) -> bool:
+        return b.get_index(self.king_index).in_check(b, self, other_player)
+
     def get_best_move(self, board: Board, other_player) -> str:
         """Current strategy: random"""
         possible_moves = self.get_possible_moves_position(board, other_player)
+        print(f"possible moves: {possible_moves}")
         select = random.randrange(len(possible_moves))
         moves = possible_moves[select]
         return positions_to_uci_str(moves[0], moves[1])
+
+    def prune_checking_moves(
+        self, moves: List[Tuple[Index, Index]], b, other_player
+    ) -> List[Tuple[Index, Index]]:
+        """Prediction: This is expensive"""
+
+        # Use copies to avoid breaking things
+        print("len before pruning: {}".format(len(moves)))
+        unpruned = []
+        for src, dst in moves:
+            new_board = copy.deepcopy(b)
+
+            # Is new_other even modified? If not we can reuse rather than copy
+            new_self = copy.deepcopy(self)
+            new_other = copy.deepcopy(other_player)
+            new_self.do_move(indices_to_cmd(src, dst), new_board, new_other)
+
+            # Remove move from list if it induces check
+            if not new_self.in_check(new_board, new_other):
+                unpruned.append((src, dst))
+        return unpruned
 
     def get_possible_moves_index(
         self, b, other_player=None
@@ -926,9 +970,12 @@ class Player:
             )
             for piece in piece_moves:
                 moves.append((index, piece))
-        if not moves:
-            raise ValueError("This means stalemate, but for now we raise")
-        return moves
+        unpruned = self.prune_checking_moves(moves, b, other_player)
+        if not unpruned:
+            raise ValueError(
+                "This means stalemate, but shouldn't happen in UCI"
+            )
+        return unpruned
 
     def get_possible_moves_position(
         self, b, other_player=None
@@ -979,7 +1026,8 @@ class Player:
         return list(set(out))
 
     def get_attacking_positions(
-            self, b: Board, other_player) -> List[Position]:
+        self, b: Board, other_player
+    ) -> List[Position]:
         return [
             index_to_position(index)
             for index in self.get_attacking_indices(b, other_player)
@@ -1092,14 +1140,13 @@ class Player:
             )
 
         # Check that not moving to same color
-        elif dst_piece is not None:
-            if dst_piece.color is self.color:
-                raise ValueError(
-                    "Piece {} at {} is same color({}),"
-                    " can't move there!".format(
-                        dst_piece, dst_pos, dst_piece.color
-                    )
+        elif dst_piece and dst_piece.color is self.color:
+            raise ValueError(
+                "Piece {} at {} is same color({}),"
+                " can't move there!".format(
+                    dst_piece, dst_pos, dst_piece.color
                 )
+            )
 
     def do_castle(
         self, board: Board, other_player, dst_pos: Position, rank: int

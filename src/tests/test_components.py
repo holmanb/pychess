@@ -315,16 +315,25 @@ class TestBishop:
         it blocks check
         """
         r1 = Rook(Column.D, 7, Color.WHITE)
+        wk = King(Column.A, 2, Color.WHITE)
         b1 = Bishop(Column.D, 6, Color.BLACK)
-        k1 = King(Column.D, 5, Color.BLACK)
+        bk = King(Column.D, 5, Color.BLACK)
+        black = Player(Color.BLACK, [b1, bk])
+        white = Player(Color.WHITE, [r1, wk])
         pieces = [
             r1,
             b1,
-            k1,
+            wk,
+            bk,
         ]
         b = Board(pieces)
-        indices = r1.get_possible_moves_index(b)
-        assert not indices
+        moves = white.get_possible_moves_position(b, black)
+        for src_move, _ in moves:
+            assert (Column.D, 6) not in src_move
+
+        # Assert the bishop doesn't have possible moves
+        for moves in white.get_possible_moves_index(b, black):
+            assert b1.index is not moves[0]
 
     def test_bishop_move_to_defend_king(self):
         """Bishop must invoke is_check() before returning moves
@@ -332,17 +341,27 @@ class TestBishop:
         it blocks check
         """
         r1 = Rook(Column.D, 7, Color.WHITE)
+        wk = King(Column.H, 2, Color.WHITE)
         b1 = Bishop(Column.E, 7, Color.BLACK)
-        k1 = King(Column.D, 5, Color.BLACK)
+        bk = King(Column.D, 5, Color.BLACK)
         pieces = [
             r1,
             b1,
-            k1,
+            wk,
+            bk,
         ]
         b = Board(pieces)
-        indices = r1.get_possible_moves_index(b)
-        assert (Column.D, 6) in indices
-        assert 1 == len(indices)
+        black = Player(Color.BLACK, [b1, bk])
+        white = Player(Color.WHITE, [r1, wk])
+        moves = black.get_possible_moves_position(b, white)
+        assert ((Column.E, 7), (Column.D, 6)) in moves
+        assert ((Column.D, 5), (Column.E, 6)) in moves
+        assert ((Column.D, 5), (Column.E, 5)) in moves
+        assert ((Column.D, 5), (Column.E, 4)) in moves
+        assert ((Column.D, 5), (Column.C, 6)) in moves
+        assert ((Column.D, 5), (Column.C, 5)) in moves
+        assert ((Column.D, 5), (Column.C, 4)) in moves
+        assert 7 == len(moves)
 
 
 class TestKnight:
@@ -766,7 +785,8 @@ class TestPlayer:
             chess.board, chess.black
         )
         pieces = [
-            Piece(end.x, end.y, Color.WHITE) for _, end in defended_positions]
+            Piece(end.x, end.y, Color.WHITE) for _, end in defended_positions
+        ]
 
         b = Board(pieces)
         legal_positions = [
@@ -779,7 +799,6 @@ class TestPlayer:
             ((Column.F, 2), (Column.F, 3)),
             ((Column.G, 2), (Column.G, 3)),
             ((Column.H, 2), (Column.H, 3)),
-
             # Pawn Move 2
             ((Column.A, 2), (Column.A, 4)),
             ((Column.B, 2), (Column.B, 4)),
@@ -789,7 +808,6 @@ class TestPlayer:
             ((Column.F, 2), (Column.F, 4)),
             ((Column.G, 2), (Column.G, 4)),
             ((Column.H, 2), (Column.H, 4)),
-
             # Knight
             ((Column.B, 1), (Column.A, 3)),
             ((Column.B, 1), (Column.C, 3)),
@@ -804,7 +822,6 @@ class TestPlayer:
             chess.board, chess.white
         )
         legal_positions = [
-
             # Pawn Move 1
             ((Column.A, 7), (Column.A, 6)),
             ((Column.B, 7), (Column.B, 6)),
@@ -814,7 +831,6 @@ class TestPlayer:
             ((Column.F, 7), (Column.F, 6)),
             ((Column.G, 7), (Column.G, 6)),
             ((Column.H, 7), (Column.H, 6)),
-
             # Pawn Move 2
             ((Column.A, 7), (Column.A, 5)),
             ((Column.B, 7), (Column.B, 5)),
@@ -824,7 +840,6 @@ class TestPlayer:
             ((Column.F, 7), (Column.F, 5)),
             ((Column.G, 7), (Column.G, 5)),
             ((Column.H, 7), (Column.H, 5)),
-
             # Knight
             ((Column.B, 8), (Column.A, 6)),
             ((Column.B, 8), (Column.C, 6)),
