@@ -351,6 +351,7 @@ class TestBishop:
             bk,
         ]
         b = Board(pieces)
+        print(b.prettify())
         black = Player(Color.BLACK, [b1, bk])
         white = Player(Color.WHITE, [r1, wk])
         moves = black.get_possible_moves_position(b, white)

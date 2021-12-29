@@ -37,8 +37,7 @@ class IndexType(IntEnum):
     # Possible moves for a piece
     ATTACKED = 2
 
-    # Will use?
-    OPEN = 3
+    ALL = 3
 
 
 class Color(Enum):
@@ -133,6 +132,9 @@ class Piece:
             )
         return False
 
+    def __hash__(self):
+        return hash((self.index, self.color, self.has_moved))
+
     def diff(self, other):
         if not isinstance(other, type(self)):
             print("diff type")
@@ -201,7 +203,7 @@ class Piece:
         self.move_to_index(position_to_index(pos))
 
     def get_relative_index(self, b, x: int, y: int):
-        return get_index(b, Index(self.index.x + x, self.index.y + y))
+        return b.board[self.index.x + x][self.index.y + y]
 
     def get_relative_index_color(self, b, x: int, y: int):
         """Get color of piece"""
@@ -338,7 +340,7 @@ class Knight(Piece):
         out = []
         for index in self.get_potentials():
             if is_index_valid(index):
-                value = get_index(b, index)
+                value = b.board[index.x][index.y]
                 if not value or self.color != value.color:
                     out.append(index)
         return out
@@ -379,19 +381,23 @@ def get_indices_in_line(
         index_y = index.y + i * y_mult
         derived_index = Index(index_x, index_y)
         if is_index_valid(derived_index):
-            piece = get_index(b, derived_index)
-            if piece:
-                # blocked by own color
-                if piece.color == color:
+            if index_type == IndexType.ALL:
+                o.append(derived_index)
+            else:
 
-                    if index_type == IndexType.DEFENDED:
+                piece = b.board[index_x][index_y]
+                if piece:
+                    # blocked by own color
+                    if piece.color == color:
+
+                        if index_type == IndexType.DEFENDED:
+                            o.append(derived_index)
+                    # attack
+                    else:
                         o.append(derived_index)
-                # attack
+                    break
                 else:
                     o.append(derived_index)
-                break
-            else:
-                o.append(derived_index)
         else:
             break
     return o
@@ -1098,27 +1104,33 @@ class Player:
     def prune_checking_moves(
         self, moves: List[Tuple[Index, Index]], b, other_player
     ) -> List[Tuple[Index, Index]]:
-        """Prediction: This is expensive"""
+        """Remove moves that could possibly induce check"""
 
-        # Use copies to avoid breaking things
         unpruned = []
 
-        def check_match(a, b):
-            if not a == b:
-                if isinstance(a, list) and isinstance(a[0], Index):
-                    a_pos = [index_to_position(val) for val in a]
-                    b_pos = [index_to_position(val) for val in b]
-                    raise ValueError(f"\n{a_pos} != \n{b_pos}")
-                raise ValueError(f"\n{a} != \n{b}")
+        # Discovery on own turn can only happen diagonally and perpendicularly
+        # Don't check for pieces that don't fall in line with king
+        line = perpendicular(
+            b, self.king_index, self.color, index_type=IndexType.DEFENDED
+        )
+        line.extend(
+            diagonal(
+                b, self.king_index, self.color, index_type=IndexType.DEFENDED
+            )
+        )
+        in_check = self.in_check(b, other_player)
 
         for src, dst in moves:
-            undo = self.do_move(indices_to_cmd(src, dst), b, other_player)
-
-            # Remove move from list if it induces check
-            if not self.in_check(b, other_player):
+            if not in_check and src not in line:
                 unpruned.append((src, dst))
+            else:
+                undo = self.do_move(indices_to_cmd(src, dst), b, other_player)
 
-            self.undo_move(indices_to_cmd(src, dst), b, other_player, undo)
+                # Remove move from list if it induces check
+                if not self.in_check(b, other_player):
+                    unpruned.append((src, dst))
+
+                self.undo_move(indices_to_cmd(src, dst), b, other_player, undo)
         return unpruned
 
     def get_possible_moves_index(
@@ -1162,7 +1174,7 @@ class Player:
     def get_material(player, board: Board) -> int:
         score = 0
         for index in player.index_list:
-            piece = get_index(board, index)
+            piece = board.board[index.x][index.y]
             if not piece:
                 raise ValueError(
                     "Accounting error, no piece at position: {}".format(

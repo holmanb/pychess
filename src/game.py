@@ -92,8 +92,8 @@ class Chess:
                     print(
                         "{}'s Turn\tMaterial: {}/{}".format(
                             "White" if turn == Color.WHITE else "Black",
-                            self.white.get_material(self.board),
-                            self.black.get_material(self.board),
+                            self.white.get_material(self.black, self.board),
+                            self.black.get_material(self.white, self.board),
                         )
                     )
                     print(self.board.prettify())
