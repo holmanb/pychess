@@ -647,6 +647,8 @@ class King(Piece):
                         ):
                             legal = False
                             break
+                    if get_position(board, Position(Column.B, 1)):
+                        legal = False
 
                     if not isinstance(q_rook, Rook):
                         raise ValueError(
@@ -693,6 +695,8 @@ class King(Piece):
                         ):
                             legal = False
                             break
+                    if get_position(board, Position(Column.B, 8)):
+                        legal = False
 
                     if not isinstance(q_rook, Rook):
                         raise ValueError(
@@ -1353,11 +1357,11 @@ class Player:
         elif dst_pos == Position(Column.C, rank):
             self.undo_move(
                 {
-                    "end": {
+                    "start": {
                         "file": "a",
                         "rank": rank,
                     },
-                    "start": {
+                    "end": {
                         "file": "d",
                         "rank": rank,
                     },
@@ -1433,6 +1437,7 @@ class Player:
 
         # Get piece at source position
         src_piece = get_position(board, src_pos)
+        src_piece_has_moved = src_piece.has_moved
 
         # Get piece at destination position
         dst_piece = get_position(board, dst_pos)
@@ -1469,6 +1474,9 @@ class Player:
         # Set piece to new position
         board.set_position(dst_pos, src_piece)
 
+        # Delete the old board position
+        board.clear_position(src_pos)
+
         # Save king coordinate
         if isinstance(src_piece, King):
             self.king_index = position_to_index(dst_pos)
@@ -1485,10 +1493,8 @@ class Player:
                         board, other_player, dst_pos, 8
                     )
 
-        # Delete the old board position
-        board.clear_position(src_pos)
         return {
-            "src_piece_moved": src_piece.has_moved,
+            "src_piece_moved": src_piece_has_moved,
             "dst_piece": dst_piece,
             "castle_undo": castle_undo,
         }
@@ -1507,6 +1513,9 @@ class Player:
 
         # Get piece at source position
         src_piece = get_position(board, src_pos)
+        if not src_piece:
+            print(board.prettify())
+            raise ValueError(f"Expected src position, {src_piece} {src_pos}")
 
         # Handle taking opponent's piece
         if undo["dst_piece"] is not None:
@@ -1531,6 +1540,11 @@ class Player:
         # Set piece to new position
         board.set_position(dst_pos, src_piece)
 
+        if undo["dst_piece"] is not None:
+            board.set_index(undo["dst_piece"].index, undo["dst_piece"])
+        else:
+            board.clear_position(src_pos)
+
         # Save king coordinate
         if isinstance(src_piece, King):
             self.king_index = position_to_index(dst_pos)
@@ -1547,10 +1561,6 @@ class Player:
                         board, other_player, src_pos, 8, undo["castle_undo"]
                     )
 
-        if undo["dst_piece"] is not None:
-            board.set_index(undo["dst_piece"].index, undo["dst_piece"])
-        else:
-            board.clear_position(src_pos)
 
         # Delete the old board position
         src_piece.has_moved = undo["src_piece_moved"]
