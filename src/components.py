@@ -6,6 +6,8 @@ from collections import namedtuple
 
 Index = namedtuple("Index", ("x", "y"))
 Position = namedtuple("Position", ("x", "y"))
+INF = 1 << 9
+NINF = 1 >> 9
 
 
 class Column(IntEnum):
@@ -130,6 +132,18 @@ class Piece:
                 and self.has_moved == other.has_moved
             )
         return False
+
+    def diff(self, other):
+        if not isinstance(other, type(self)):
+            print("diff type")
+
+        if not self.index == other.index:
+            print("diff index")
+        if not self.color == other.color:
+            print("diff color")
+        if not self.has_moved == other.has_moved:
+            print("has moved")
+        return self == other
 
     def get_position(self):
         return index_to_position(self.index)
@@ -552,8 +566,6 @@ class King(Piece):
         This is identical to get_attacking_moves_index() for all pieces except
         Pawn, which has asymetric moves and attack positions
         """
-        # TODO: implement this by checking player index rather than returning
-        # objects?
         if other_player.color == self.color:
             raise ValueError("Need opposite player to verify checkness")
         out = perpendicular(board, self.index, self.color, max_depth=2)
@@ -740,6 +752,19 @@ class Board:
         for piece in copy.deepcopy(pieces):
             self.init_piece(piece, piece.index)
 
+    def __eq__(self, other):
+        for left, right in zip(self.board, other.board):
+            for l_piece, r_piece in zip(left, right):
+                if l_piece != r_piece:
+                    return False
+        return True
+
+    def diff(self, other):
+        for left, right in zip(self.board, other.board):
+            for l_piece, r_piece in zip(left, right):
+                if l_piece != r_piece:
+                    return (l_piece, r_piece)
+
     def init_piece(self, piece, index: Index):
         index_valid_or_raise(index)
         self.board[piece.index.x][piece.index.y] = piece
@@ -754,6 +779,9 @@ class Board:
 
     def get_index(self, index: Index):
         return self.board[index.x][index.y]
+
+    def get_position(self, index: Position):
+        return self.get_index(position_to_index(index))
 
     def set_index(self, index: Index, piece: Piece) -> None:
         self.board[index.x][index.y] = piece
@@ -909,12 +937,11 @@ class Player:
 
     def __init__(self, color: Color, pieces: List):
         # Seed randomness for move selection
-        self.king_index: Index = None
+        self.king_index: Index
         self.index_list: List[Index] = []
-        random.seed()
         self.color: Color = color
-        self.KCastle = True
-        self.QCastle = True
+
+        random.seed()
         for piece in pieces:
             if piece.color is not self.color:
                 raise ValueError("Invalid piece color added to player")
@@ -923,16 +950,150 @@ class Player:
             if isinstance(piece, King):
                 self.king_index = piece.index
 
+    def __eq__(self, other):
+        """do_move() and undo_move() change list order, but we don't care:
+        use set comparasin
+
+        TODO: Should the index_list just be a set?
+        """
+        if isinstance(other, type(self)):
+            return (
+                self.king_index == other.king_index
+                and self.color == other.color
+                and (set(self.index_list) == set(other.index_list))
+            )
+        return False
+
+    def diff(self, other):
+        """do_move() and undo_move() change list order, but we don't care:
+        use set comparasin
+
+        TODO: Should the index_list just be a set?
+        """
+        if not isinstance(other, type(self)):
+            print("diff type")
+
+        if self.king_index != other.king_index:
+            print("diff king index")
+        if self.color != other.color:
+            print("diff color")
+        if set(self.index_list) != set(other.index_list):
+            print(
+                "diff list:\n{}\n{}".format(
+                    set(self.index_list), set(other.index_list)
+                )
+            )
+            print(
+                "diff list diff:{}".format(
+                    set(self.index_list) - set(other.index_list)
+                )
+            )
+            print(
+                "diff list diff:{}".format(
+                    set(other.index_list) - set(self.index_list)
+                )
+            )
+        return self == other
+
     def in_check(self, b, other_player) -> bool:
         return b.get_index(self.king_index).in_check(b, self, other_player)
 
     def get_best_move(self, board: Board, other_player) -> str:
-        """Current strategy: random"""
-        possible_moves = self.get_possible_moves_position(board, other_player)
-        print(f"possible moves: {possible_moves}")
-        select = random.randrange(len(possible_moves))
-        moves = possible_moves[select]
-        return positions_to_uci_str(moves[0], moves[1])
+        """Current strategy: material
+
+        TODO: something is wrong here or in minimax
+        """
+        possible_moves = self.get_possible_moves_index(board, other_player)
+        best_move = []
+        for move in possible_moves:
+            undo = self.do_move(
+                indices_to_cmd(move[0], move[1]), board, other_player
+            )
+            move_score = self.minimax(board, other_player, 2, True)
+            self.undo_move(
+                indices_to_cmd(move[0], move[1]), board, other_player, undo
+            )
+            print(
+                "move score: {} ({}, {})".format(
+                    move_score,
+                    index_to_position(move[0]),
+                    index_to_position(move[1]),
+                )
+            )
+
+            # First score add
+            if not best_move:
+                best_move.append((move_score, move))
+
+            # Better score replace
+            elif move_score > best_move[0][0]:
+                del best_move
+                best_move = [(move_score, move)]
+
+            # Equivalent score add
+            elif move_score == best_move[0][0]:
+                best_move.append((move_score, move))
+
+        # Randomly select from equivalent bestmoves
+        match = best_move[0][0]
+        print("selecting between scores of value: {}".format(match))
+        for move in best_move:
+            if match != move[0]:
+                raise ValueError("Scores don't match")
+        select = random.randrange(len(best_move))
+        print("best moves")
+        print(best_move)
+        moves = best_move[select]
+        return positions_to_uci_str(
+            index_to_position(moves[1][0]), index_to_position(moves[1][1])
+        )
+
+    def value(self, board: Board, other_player) -> int:
+        """Difference in material"""
+        return self.get_material(self, board) - self.get_material(
+            other_player, board
+        )
+
+    def minimax(
+        self, board: Board, other_player, depth: int, maximizing_player: bool
+    ) -> int:
+
+        # Base case
+        if 0 == depth:
+            return self.value(board, other_player)
+
+        possible_moves = self.get_possible_moves_index(board, other_player)
+
+        # Only one move possible, eval
+        if 1 == len(possible_moves):
+            return self.value(board, other_player)
+
+        if maximizing_player:
+            value = NINF
+            for src, dst in possible_moves:
+                undo = self.do_move(
+                    indices_to_cmd(src, dst), board, other_player
+                )
+                value = max(
+                    value, self.minimax(board, other_player, depth - 1, False)
+                )
+                self.undo_move(
+                    indices_to_cmd(src, dst), board, other_player, undo
+                )
+            return value
+        else:
+            value = INF
+            for src, dst in possible_moves:
+                undo = self.do_move(
+                    indices_to_cmd(src, dst), board, other_player
+                )
+                value = min(
+                    value, self.minimax(board, other_player, depth - 1, True)
+                )
+                self.undo_move(
+                    indices_to_cmd(src, dst), board, other_player, undo
+                )
+            return value
 
     def prune_checking_moves(
         self, moves: List[Tuple[Index, Index]], b, other_player
@@ -940,19 +1101,24 @@ class Player:
         """Prediction: This is expensive"""
 
         # Use copies to avoid breaking things
-        print("len before pruning: {}".format(len(moves)))
         unpruned = []
-        for src, dst in moves:
-            new_board = copy.deepcopy(b)
 
-            # Is new_other even modified? If not we can reuse rather than copy
-            new_self = copy.deepcopy(self)
-            new_other = copy.deepcopy(other_player)
-            new_self.do_move(indices_to_cmd(src, dst), new_board, new_other)
+        def check_match(a, b):
+            if not a == b:
+                if isinstance(a, list) and isinstance(a[0], Index):
+                    a_pos = [index_to_position(val) for val in a]
+                    b_pos = [index_to_position(val) for val in b]
+                    raise ValueError(f"\n{a_pos} != \n{b_pos}")
+                raise ValueError(f"\n{a} != \n{b}")
+
+        for src, dst in moves:
+            undo = self.do_move(indices_to_cmd(src, dst), b, other_player)
 
             # Remove move from list if it induces check
-            if not new_self.in_check(new_board, new_other):
+            if not self.in_check(b, other_player):
                 unpruned.append((src, dst))
+
+            self.undo_move(indices_to_cmd(src, dst), b, other_player, undo)
         return unpruned
 
     def get_possible_moves_index(
@@ -992,9 +1158,10 @@ class Player:
             )
         return positions
 
-    def get_material(self, board: Board) -> int:
+    @staticmethod
+    def get_material(player, board: Board) -> int:
         score = 0
-        for index in self.index_list:
+        for index in player.index_list:
             piece = get_index(board, index)
             if not piece:
                 raise ValueError(
@@ -1007,10 +1174,6 @@ class Player:
                 score += piece.value
         return score
 
-    def get_score(self, board: Board) -> int:
-        """Intended for player strategy"""
-        return self.get_material(board)
-
     def is_attacking_index(self, b: Board, index: Index, other_player):
         return index in self.get_attacking_indices(b, other_player)
 
@@ -1022,6 +1185,7 @@ class Player:
             piece = b.board[index.x][index.y]
             for move in piece.get_attacking_moves_index(b, self, other_player):
                 out.append(move)
+
         # Todo: Maybe don't remove dups for detecting double check?
         return list(set(out))
 
@@ -1148,6 +1312,46 @@ class Player:
                 )
             )
 
+    def undo_castle(
+        self, board: Board, other_player, dst_pos: Position, rank: int, undo
+    ):
+        if dst_pos == Position(Column.G, rank):
+            self.undo_move(
+                {
+                    "start": {
+                        "file": "h",
+                        "rank": rank,
+                    },
+                    "end": {
+                        "file": "f",
+                        "rank": rank,
+                    },
+                    "promote": None,
+                },
+                board,
+                other_player,
+                undo,
+            )
+        elif dst_pos == Position(Column.C, rank):
+            self.undo_move(
+                {
+                    "end": {
+                        "file": "a",
+                        "rank": rank,
+                    },
+                    "start": {
+                        "file": "d",
+                        "rank": rank,
+                    },
+                    "promote": None,
+                },
+                board,
+                other_player,
+                undo,
+            )
+        else:
+            raise ValueError(f"Invalid castling destination: {dst_pos}")
+
     def do_castle(
         self, board: Board, other_player, dst_pos: Position, rank: int
     ):
@@ -1155,9 +1359,12 @@ class Player:
         position rules are identical besides rank
 
         Mock user input and call do_move() without verification
+        This should only ever cause recursion one level deep, since do_castle()
+        is called by do_move(), but subsequent do_moves() should never call
+        do_castle()
         """
         if dst_pos == Position(Column.G, rank):
-            self.do_move(
+            return self.do_move(
                 {
                     "start": {
                         "file": "h",
@@ -1174,7 +1381,7 @@ class Player:
                 verify=False,
             )
         elif dst_pos == Position(Column.C, rank):
-            self.do_move(
+            return self.do_move(
                 {
                     "start": {
                         "file": "a",
@@ -1193,11 +1400,13 @@ class Player:
         else:
             raise ValueError(f"Invalid castling destination: {dst_pos}")
 
-    def do_move(self, move: dict, board: Board, other_player, verify=True):
+    def do_move(
+        self, move: dict, board: Board, other_player, verify=True
+    ) -> dict:
         """Move piece and update accounting in board, players, and piece"""
+        castle_undo = None
         start = move["start"]
         end = move["end"]
-
         # Source position
         src_pos = cmd_to_position(start)
 
@@ -1250,12 +1459,83 @@ class Player:
             # Castling, do rook move too, legality checked already
             if distance.x > 1:
                 if Color.WHITE == self.color:
-                    self.do_castle(board, other_player, dst_pos, 1)
+                    castle_undo = self.do_castle(
+                        board, other_player, dst_pos, 1
+                    )
                 elif Color.BLACK == self.color:
-                    self.do_castle(board, other_player, dst_pos, 8)
+                    castle_undo = self.do_castle(
+                        board, other_player, dst_pos, 8
+                    )
 
         # Delete the old board position
         board.clear_position(src_pos)
+        return {
+            "src_piece_moved": src_piece.has_moved,
+            "dst_piece": dst_piece,
+            "castle_undo": castle_undo,
+        }
+
+    def undo_move(self, move: dict, board: Board, other_player, undo) -> None:
+        """Move piece and update accounting in board, players, and piece"""
+
+        end = move["start"]
+        start = move["end"]
+
+        # Source position
+        src_pos = cmd_to_position(start)
+
+        # Destination position
+        dst_pos = cmd_to_position(end)
+
+        # Get piece at source position
+        src_piece = get_position(board, src_pos)
+
+        # Handle taking opponent's piece
+        if undo["dst_piece"] is not None:
+
+            # Remove piece from other player's index
+            other_player.set_piece_index(position_to_index(src_pos))
+
+        # Pawn promotion
+        if move["promote"]:
+            src_piece = Pawn(src_pos.x, src_pos.y, src_piece.color)
+
+            # Replace old piece
+            board.set_position(src_pos, src_piece)
+
+        # Update this player's accounting
+        src_pos = index_to_position(src_piece.index)
+        self.update_piece_position(src_piece, dst_pos)
+
+        # Update piece accounting
+        src_piece.move_to_position(dst_pos)
+
+        # Set piece to new position
+        board.set_position(dst_pos, src_piece)
+
+        # Save king coordinate
+        if isinstance(src_piece, King):
+            self.king_index = position_to_index(dst_pos)
+            distance = get_position_distance(src_pos, dst_pos)
+
+            # Castling, do rook move too, legality checked already
+            if distance.x > 1:
+                if Color.WHITE == self.color:
+                    self.undo_castle(
+                        board, other_player, src_pos, 1, undo["castle_undo"]
+                    )
+                elif Color.BLACK == self.color:
+                    self.undo_castle(
+                        board, other_player, src_pos, 8, undo["castle_undo"]
+                    )
+
+        if undo["dst_piece"] is not None:
+            board.set_index(undo["dst_piece"].index, undo["dst_piece"])
+        else:
+            board.clear_position(src_pos)
+
+        # Delete the old board position
+        src_piece.has_moved = undo["src_piece_moved"]
 
     def move(self, move: dict, board: Board, other_player):
         self.do_move(move["move"], board, other_player)

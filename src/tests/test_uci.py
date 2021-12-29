@@ -1,6 +1,5 @@
 import pytest
 from unittest.mock import patch
-import fileinput
 from typing import List
 from ..uci import position_valid_or_raise, parse_command, main
 
@@ -23,6 +22,14 @@ DEFAULT_START = addln(
 MOVE_TWO = DEFAULT_START + addln(
     [
         "position startpos moves e2e4 a7a5 b2b3",
+        "isready",
+        "go wtime 300000 btime 300000 movestogo 40",
+    ]
+)
+CASTLE = DEFAULT_START + addln(
+    [
+        "position startpos moves e2e3 h7h5 g2g4 h5g4 "
+        "g1f3 h8h2 f3h2 g4g3 f2g3 e7e6 h2f3 d8h4 g3h4",
         "isready",
         "go wtime 300000 btime 300000 movestogo 40",
     ]
@@ -56,7 +63,14 @@ class TestUCI:
         captured = capsys.readouterr()
         assert "readyok" in captured.out
 
-    @patch("builtins.input", side_effect=MOVE_TWO)
+    @patch("builtins.input", side_effect=DEFAULT_START)
+    def test_main(self, _input):
+        try:
+            main()
+        except StopIteration:
+            pass
+
+    @patch("builtins.input", side_effect=CASTLE)
     def test_main(self, _input):
         try:
             main()

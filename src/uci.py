@@ -90,9 +90,8 @@ def parse_command(cmd, state: dict) -> Tuple[bool, Union[List[dict], bool]]:
 
         # for synchronizing after long running commands
         case ["isready"]:
-            print("wut")
             if "go" == state["last"]:
-                log.warning("Invalid move detected")
+                log.warning("Checkmate or invalid move")
             uci("readyok")
 
         # default start position
