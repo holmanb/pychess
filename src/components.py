@@ -116,6 +116,7 @@ class Piece:
     """
 
     value = None
+    __slots__ = ['index', 'color', 'has_moved']
 
     def __init__(self, x: Column, y: int, color: Color):
         self.index = position_to_index(Position(x, y))
@@ -323,7 +324,8 @@ class Knight(Piece):
         return "♘" if self.color == Color.WHITE else "♞"
 
     def get_potentials(self) -> List[Index]:
-        return [
+        legal = []
+        possible = [
             Index(self.index.x + 1, self.index.y + 2),
             Index(self.index.x - 1, self.index.y + 2),
             Index(self.index.x - 1, self.index.y - 2),
@@ -333,24 +335,23 @@ class Knight(Piece):
             Index(self.index.x - 2, self.index.y - 1),
             Index(self.index.x + 2, self.index.y - 1),
         ]
+        for index in possible:
+            if is_index_valid(index):
+                legal.append(index)
+        return legal
 
     def get_possible_moves_index(
         self, b, player=None, other_player=None
     ) -> List[Index]:
         out = []
         for index in self.get_potentials():
-            if is_index_valid(index):
-                value = b.board[index.x][index.y]
-                if not value or self.color != value.color:
-                    out.append(index)
+            value = b.board[index.x][index.y]
+            if not value or self.color != value.color:
+                out.append(index)
         return out
 
     def get_defended_moves_index(self, b, *_args) -> List[Index]:
-        out = []
-        for index in self.get_potentials():
-            if is_index_valid(index):
-                out.append(index)
-        return out
+        return self.get_potentials()
 
 
 def get_indices_in_line(
@@ -359,7 +360,7 @@ def get_indices_in_line(
     color: Color,
     x_mult: int = 0,
     y_mult: int = 0,
-    max_depth: int = 8,
+    max_depth: int = 7,
     index_type: IndexType = IndexType.ATTACKED,
 ) -> List[Index]:
     """Return valid moves in a straight line. Multiplier may be used to
@@ -380,7 +381,9 @@ def get_indices_in_line(
         index_x = index.x + i * x_mult
         index_y = index.y + i * y_mult
         derived_index = Index(index_x, index_y)
-        if is_index_valid(derived_index):
+
+        # Inlined is_index_valid saves ~1s from benchmark
+        if index_x >= 0 and index_x < 8 and index_y >= 0 and index_y < 8:
             if index_type == IndexType.ALL:
                 o.append(derived_index)
             else:
@@ -407,7 +410,7 @@ def diagonal(
     b,
     index: Index,
     color,
-    max_depth: int = 8,
+    max_depth: int = 7,
     index_type: IndexType = IndexType.ATTACKED,
 ) -> List[Index]:
     out = []
@@ -470,7 +473,7 @@ def perpendicular(
     b,
     index: Index,
     color: Color,
-    max_depth: int = 8,
+    max_depth: int = 7,
     index_type: IndexType = IndexType.ATTACKED,
 ) -> List[Index]:
 
@@ -751,6 +754,8 @@ AllPieces = Union[King, Queen, Rook, Bishop, Pawn, Piece]
 
 
 class Board:
+    __slots__ = ['board']
+
     def __init__(self, pieces: List):
 
         self.board: List[List]
@@ -940,6 +945,7 @@ class Player:
     """Represents one side, used to track the location of pieces for iterating
     over, rather than iterating over the entire board
     """
+    __slots__ = ['king_index', 'index_list', 'color']
 
     def __init__(self, color: Color, pieces: List):
         # Seed randomness for move selection
