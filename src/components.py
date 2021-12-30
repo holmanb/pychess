@@ -1,3 +1,4 @@
+import time
 import copy
 import random
 from enum import Enum, IntEnum
@@ -1021,19 +1022,23 @@ class Player:
         """
         possible_moves = self.get_possible_moves_index(board, other_player)
         best_move = []
+        node_count = 0
+        start = time.time()
         for move in possible_moves:
             undo = self.do_move(
                 indices_to_cmd(move[0], move[1]), board, other_player
             )
-            move_score = self.minimax(board, other_player, 2, True)
+            move_score, count = self.minimax(board, other_player, 2, True)
+            node_count = node_count + count
             self.undo_move(
                 indices_to_cmd(move[0], move[1]), board, other_player, undo
             )
             print(
-                "move score: {} ({}, {})".format(
+                "nodes: {} move score: {} ({}, {})".format(
+                    count,
                     move_score,
                     index_to_position(move[0]),
-                    index_to_position(move[1]),
+                    index_to_position(move[1])
                 )
             )
 
@@ -1049,6 +1054,9 @@ class Player:
             # Equivalent score add
             elif move_score == best_move[0][0]:
                 best_move.append((move_score, move))
+        total_time = time.time() - start
+        nps = node_count / total_time
+        print(f"nps: {nps:.0f} evaluated {node_count} nodes in {total_time:.2f}s")
 
         # Randomly select from equivalent bestmoves
         match = best_move[0][0]
@@ -1072,44 +1080,46 @@ class Player:
 
     def minimax(
         self, board: Board, other_player, depth: int, maximizing_player: bool
-    ) -> int:
+    ) -> Tuple[int, int]:
 
         # Base case
         if 0 == depth:
-            return self.value(board, other_player)
+            return (self.value(board, other_player), 1)
+        nodes = 0
 
         possible_moves = self.get_possible_moves_index(board, other_player)
-
-        # Only one move possible, eval
-        if 1 == len(possible_moves):
-            return self.value(board, other_player)
-
         if maximizing_player:
             value = NINF
             for src, dst in possible_moves:
                 undo = self.do_move(
                     indices_to_cmd(src, dst), board, other_player
                 )
+                minimax, count = self.minimax(
+                    board, other_player, depth - 1, False)
                 value = max(
-                    value, self.minimax(board, other_player, depth - 1, False)
+                    value, minimax
                 )
                 self.undo_move(
                     indices_to_cmd(src, dst), board, other_player, undo
                 )
-            return value
+                nodes = nodes + count
+            return (value, nodes)
         else:
             value = INF
             for src, dst in possible_moves:
                 undo = self.do_move(
                     indices_to_cmd(src, dst), board, other_player
                 )
+                minimax, count = self.minimax(
+                    board, other_player, depth - 1, True)
                 value = min(
-                    value, self.minimax(board, other_player, depth - 1, True)
+                    value, minimax
                 )
                 self.undo_move(
                     indices_to_cmd(src, dst), board, other_player, undo
                 )
-            return value
+                nodes = nodes + count
+            return (value, nodes)
 
     def prune_checking_moves(
         self, moves: List[Tuple[Index, Index]], b, other_player
