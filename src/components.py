@@ -51,6 +51,50 @@ class Row(IntEnum):
     _8 = 7
 
 
+piece_str_to_column = {
+    "a": Column.A,
+    "b": Column.B,
+    "c": Column.C,
+    "d": Column.D,
+    "e": Column.E,
+    "f": Column.F,
+    "g": Column.G,
+    "h": Column.H,
+}
+
+piece_str_to_row = {
+    "1": Row._1,
+    "2": Row._2,
+    "3": Row._3,
+    "4": Row._4,
+    "5": Row._5,
+    "6": Row._6,
+    "7": Row._7,
+    "8": Row._8,
+}
+
+piece_column_to_str = {
+    Column.A: "a",
+    Column.B: "b",
+    Column.C: "c",
+    Column.D: "d",
+    Column.E: "e",
+    Column.F: "f",
+    Column.G: "g",
+    Column.H: "h",
+}
+
+piece_row_to_str = {
+    Row._1: "1",
+    Row._2: "2",
+    Row._3: "3",
+    Row._4: "4",
+    Row._5: "5",
+    Row._6: "6",
+    Row._7: "7",
+    Row._8: "8",
+}
+
 class IndexType(IntEnum):
     # King may not move into defended Indexes
     # one piece may defend another of the same color
@@ -130,7 +174,7 @@ class Piece:
     def in_check(self, b, player, other_player) -> bool:
         raise AttributeError(
             f"Attempting to verify checkness for {self.color} "
-            f"at {self.index} is of type {type(self)}\n{b.prettify()}"
+            f"at {self.index} is of type {type(self)}\n{b}"
         )
 
     def diff(self, other):
@@ -731,6 +775,16 @@ class Queen(Piece):
         return out
 
 
+piece_notation_to_class = {
+    "K": King,
+    "Q": Queen,
+    "N": Knight,
+    "B": Bishop,
+    "R": Rook,
+    "P": Pawn,
+}
+
+
 # For type hints
 AllPieces = Union[King, Queen, Rook, Bishop, Pawn, Piece]
 
@@ -846,59 +900,6 @@ class Board:
     def __str__(self) -> str:
         return self.to_string()
 
-
-piece_notation_to_class = {
-    "K": King,
-    "Q": Queen,
-    "N": Knight,
-    "B": Bishop,
-    "R": Rook,
-    "P": Pawn,
-}
-
-piece_str_to_column = {
-    "a": Column.A,
-    "b": Column.B,
-    "c": Column.C,
-    "d": Column.D,
-    "e": Column.E,
-    "f": Column.F,
-    "g": Column.G,
-    "h": Column.H,
-}
-
-piece_str_to_row = {
-    "1": Row._1,
-    "2": Row._2,
-    "3": Row._3,
-    "4": Row._4,
-    "5": Row._5,
-    "6": Row._6,
-    "7": Row._7,
-    "8": Row._8,
-}
-
-piece_column_to_str = {
-    Column.A: "a",
-    Column.B: "b",
-    Column.C: "c",
-    Column.D: "d",
-    Column.E: "e",
-    Column.F: "f",
-    Column.G: "g",
-    Column.H: "h",
-}
-
-piece_row_to_str = {
-    Row._1: "1",
-    Row._2: "2",
-    Row._3: "3",
-    Row._4: "4",
-    Row._5: "5",
-    Row._6: "6",
-    Row._7: "7",
-    Row._8: "8",
-}
 
 
 def indices_to_cmd(src_index: Index, dst_index: Index):
@@ -1046,7 +1047,7 @@ class Player:
             f"nps: {nps:.0f} evaluated {node_count} nodes in {total_time:.2f}s"
         )
         uci.uci(f"info nps {nps:.0f}")
-        uci.uci(f"info depth {nps:.0f}")
+        uci.uci(f"info depth {depth:.0f}")
         uci.uci(f"info nodes {node_count}")
         uci.uci(f"info score cp {move_score*100}")
 
@@ -1132,7 +1133,7 @@ class Player:
             b, self.king_index, self.color, out, index_type=IndexType.DEFENDED
         )
         in_check = self.in_check(b, other_player)
-
+#        print(f"in check: {in_check}")
         for src, dst in moves:
             if not in_check and src not in out:
                 unpruned.append((src, dst))
@@ -1165,8 +1166,11 @@ class Player:
 
         pruned = self.prune_checking_moves(moves, b, other_player)
         if not pruned:
+            import pprint
+            pprint.pprint(moves)
+            print(b)
             raise ValueError(
-                "This means stalemate, but shouldn't happen in UCI"
+                f"{self.color} has no valid moves after pruning. "
             )
         return pruned
 
@@ -1216,7 +1220,7 @@ class Player:
         pieces = []
         for piece in self.get_defended_indices(b, other_player):
             pieces.append(Piece(piece.x, piece.y, Color.BLACK))
-        print(Board(pieces).prettify())
+        print(Board(pieces))
 
     def is_defending_index(self, b: Board, index: Index, other_player) -> bool:
         if other_player.color == self.color:
@@ -1254,7 +1258,7 @@ class Player:
         if not src_piece:
             raise ValueError(
                 "No piece at {}{}\n{}".format(
-                    start["file"], start["rank"], board.prettify()
+                    start["file"], start["rank"], board
                 )
             )
         # Check that piece is correct type
@@ -1269,7 +1273,7 @@ class Player:
 
         # Check that source piece is owned by this player
         elif src_piece.color is not self.color:
-            print(board.prettify())
+            print(board)
             raise ValueError(
                 "Piece at {}{} is not {}".format(
                     start["file"], start["rank"], self.color
@@ -1478,7 +1482,7 @@ class Player:
         # Get piece at source index
         src_piece = get_index(board, src_index)
         if not src_piece:
-            print(board.prettify())
+            print(board)
             raise ValueError(f"Expected src index, {src_piece} {src_index}")
 
         # Handle taking opponent's piece

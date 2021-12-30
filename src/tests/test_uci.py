@@ -78,6 +78,14 @@ RANDO_CRASH_4 = DEFAULT_START + addln(
     ]
 )
 
+RANDO_CRASH_5 = DEFAULT_START + addln(
+    [
+        "position startpos moves e2e4 a7a6 d2d4 b7b6 c1f4 c8b7 b1c3 b7d5 c3b5 c7c6 d5e4",
+        "isready",
+        "go wtime 300000 btime 300000 movestogo 40",
+    ]
+)
+
 
 class TestUCI:
     def _main(self):
@@ -138,4 +146,32 @@ class TestUCI:
 
     @patch("builtins.input", side_effect=RANDO_CRASH_4)
     def test_main_crash_4(self, _input):
+        self._main()
+
+    @patch("builtins.input", side_effect=RANDO_CRASH_5)
+    def test_main_crash_5(self, _input):
+        self._main()
+
+
+SACK_QUEEN = addln(
+    [
+        "uci",
+        "isready",
+        "ucinewgame",
+        "position startpos",
+        "position startpos moves e2e4 b8a6 d1g4 c7c6 g4g6",
+        "go wtime 300000 btime 300000 movestogo 40",
+    ]
+)
+
+
+class TestMiniMax:
+    def _main(self):
+        try:
+            main()
+        except StopIteration:
+            pass
+
+    @patch("builtins.input", side_effect=SACK_QUEEN)
+    def test_mini_max_queen_sack(self, _input):
         self._main()
