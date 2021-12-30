@@ -2,14 +2,11 @@
 
 # ref: https://github.com/nomemory/uci-protocol-specification/
 
-import fileinput
 import traceback
 import os
 import logging as log
 from pathlib import Path
 from typing import Tuple, List, Union
-
-from game import Chess
 
 ENGINE_NAME = "pychess"
 THIS = Path(__file__).parent
@@ -164,6 +161,9 @@ def parse_command(cmd, state: dict) -> Tuple[bool, Union[List[dict], bool]]:
 
 
 def main():
+
+    from game import Chess
+
     bestmove.i = 0
     if not LOG_DIR.is_dir():
         LOG_DIR.mkdir()
@@ -187,7 +187,7 @@ def main():
     log.info(f"| Starting {ENGINE_NAME}                                 |")
     log.info("==================================================")
     log.info(f"started by parent process: [{ppid}]\n")
-    last_position = None
+    last_position = []
     while True:
         line = input()
 
@@ -195,10 +195,8 @@ def main():
         if position:
             last_position = position
         if get_move:
-            if not isinstance(last_position, list):
-                raise TypeError(f"{last_position}")
             bestmove(Chess().get_best_move(last_position))
-            last_position = None
+            last_position = []
 
 
 if "__main__" == __name__:

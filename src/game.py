@@ -126,7 +126,7 @@ class Chess:
         except KeyboardInterrupt:
             print()
 
-    def get_best_move(self, opponent_moves: List[dict]) -> str:
+    def get_best_move(self, opponent_moves: List) -> str:
         # Update state with opponent's move
         for opponent_move in opponent_moves:
             if self.move_color == Color.WHITE:

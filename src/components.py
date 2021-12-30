@@ -5,6 +5,8 @@ from enum import Enum, IntEnum
 from typing import Union, List, Any, Tuple
 from collections import namedtuple
 
+import uci
+
 Index = namedtuple("Index", ("x", "y"))
 Position = namedtuple("Position", ("x", "y"))
 INF = 1 << 9
@@ -124,6 +126,12 @@ class Piece:
 
     def __hash__(self):
         return hash((self.index, self.color, self.has_moved))
+
+    def in_check(self, b, player, other_player) -> bool:
+        raise AttributeError(
+            f"Attempting to verify checkness for {self.color} "
+            f"at {self.index} is of type {type(self)}\n{b.prettify()}"
+        )
 
     def diff(self, other):
         if not isinstance(other, type(self)):
@@ -993,7 +1001,7 @@ class Player:
     def in_check(self, b, other_player) -> bool:
         return b.get_index(self.king_index).in_check(b, self, other_player)
 
-    def get_best_move(self, board: Board, other_player) -> str:
+    def get_best_move(self, board: Board, other_player, depth=3) -> str:
         """Current strategy: material
 
         TODO: something is wrong here or in minimax
@@ -1001,12 +1009,15 @@ class Player:
         possible_moves = self.get_possible_moves_index(board, other_player)
         best_move = []
         node_count = 0
+        move_score = 0
         start = time.time()
         for move in possible_moves:
             undo = self.do_move(
                 indices_to_cmd(move[0], move[1]), board, other_player
             )
-            move_score, count = self.minimax(board, other_player, 2, True)
+            move_score, count = self.minimax(
+                board, other_player, depth - 1, True
+            )
             node_count = node_count + count
             self.undo_move(
                 indices_to_cmd(move[0], move[1]), board, other_player, undo
@@ -1034,6 +1045,10 @@ class Player:
         print(
             f"nps: {nps:.0f} evaluated {node_count} nodes in {total_time:.2f}s"
         )
+        uci.uci(f"info nps {nps:.0f}")
+        uci.uci(f"info depth {nps:.0f}")
+        uci.uci(f"info nodes {node_count}")
+        uci.uci(f"info score cp {move_score*100}")
 
         # Randomly select from equivalent bestmoves
         match = best_move[0][0]
@@ -1057,13 +1072,13 @@ class Player:
         self, board: Board, other_player, depth: int, maximizing_player: bool
     ) -> Tuple[int, int]:
 
-        # Base case
-        if 0 == depth:
-            return (self.value(board, other_player), 1)
-        nodes = 0
-
-        possible_moves = self.get_possible_moves_index(board, other_player)
         if maximizing_player:
+            # Base case
+            if 0 == depth:
+                return (self.value(board, other_player), 1)
+            nodes = 0
+
+            possible_moves = self.get_possible_moves_index(board, other_player)
             value = NINF
             for src, dst in possible_moves:
                 undo = self.do_move(
@@ -1079,17 +1094,23 @@ class Player:
                 nodes = nodes + count
             return (value, nodes)
         else:
+            # Base case
+            if 0 == depth:
+                return (other_player.value(board, self), 1)
+            nodes = 0
+
+            possible_moves = other_player.get_possible_moves_index(board, self)
             value = INF
             for src, dst in possible_moves:
-                undo = self.do_move(
-                    indices_to_cmd(src, dst), board, other_player
+                undo = other_player.do_move(
+                    indices_to_cmd(src, dst), board, self
                 )
-                minimax, count = self.minimax(
-                    board, other_player, depth - 1, True
+                minimax, count = other_player.minimax(
+                    board, self, depth - 1, True
                 )
                 value = min(value, minimax)
-                self.undo_move(
-                    indices_to_cmd(src, dst), board, other_player, undo
+                other_player.undo_move(
+                    indices_to_cmd(src, dst), board, self, undo
                 )
                 nodes = nodes + count
             return (value, nodes)
@@ -1131,19 +1152,23 @@ class Player:
         """Iterate over all pieces and get a list of Tuples with (src, dst)"""
         moves: List[Tuple[Index, Index]] = []
 
-        for index in self.index_list:
-            piece = b.board[index.x][index.y]
+        for src in self.index_list:
+            piece = b.board[src.x][src.y]
             piece_moves = piece.get_possible_moves_index(
                 b, player=self, other_player=other_player
             )
             for piece in piece_moves:
-                moves.append((index, piece))
-        unpruned = self.prune_checking_moves(moves, b, other_player)
-        if not unpruned:
+
+                # Can't actually move to king
+                if not isinstance(b.get_index(piece), King):
+                    moves.append((src, piece))
+
+        pruned = self.prune_checking_moves(moves, b, other_player)
+        if not pruned:
             raise ValueError(
                 "This means stalemate, but shouldn't happen in UCI"
             )
-        return unpruned
+        return pruned
 
     @staticmethod
     def get_material(player, board: Board) -> int:
@@ -1220,6 +1245,11 @@ class Player:
         dst_piece: Piece,
     ):
         start = move["start"]
+
+        # Shouldn't actually take the king
+        if isinstance(dst_piece, King):
+            raise ValueError("Cannot take the king")
+
         # Check that source piece exists
         if not src_piece:
             raise ValueError(
@@ -1239,6 +1269,7 @@ class Player:
 
         # Check that source piece is owned by this player
         elif src_piece.color is not self.color:
+            print(board.prettify())
             raise ValueError(
                 "Piece at {}{} is not {}".format(
                     start["file"], start["rank"], self.color
