@@ -11,6 +11,10 @@ clean:
 fmt:
 	black --line-length 79 --target-version py310 --fast .
 
-.PHONY pytest:
+.PHONY test:
 test:
 	python3.10 -m pytest tests
+
+.PHONY benchmark:
+benchmark:
+	./bench/bench.sh
