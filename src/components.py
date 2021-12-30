@@ -1025,7 +1025,7 @@ class Player:
             )
             print(
                 "nodes: {} move score: {} ({}, {})".format(
-                    count, move_score, move[0], move[1]
+                    count, move_score, move[0], Index(Column(move[1].x), Column(move[1].y))
                 )
             )
 
