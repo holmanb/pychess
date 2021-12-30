@@ -30,6 +30,25 @@ class Column(IntEnum):
     H = 7
 
 
+class Row(IntEnum):
+    """Index the array using enums
+
+    reference A1 on the board using:
+    ```
+    board[Column.A, Row._1]
+    ```
+    """
+
+    _1 = 0
+    _2 = 1
+    _3 = 2
+    _4 = 3
+    _5 = 4
+    _6 = 5
+    _7 = 6
+    _8 = 7
+
+
 class IndexType(IntEnum):
     # King may not move into defended Indexes
     # one piece may defend another of the same color
@@ -46,29 +65,13 @@ class Color(Enum):
     WHITE = 2
 
 
-def index_to_position(index: Index) -> Position:
-    return Position(Column(index.x), index.y + 1)
-
-
-def position_to_index(position: Position) -> Index:
-    return Index(int(position.x), position.y - 1)
-
-
 def is_index_valid(index: Index) -> bool:
     return index.x >= 0 and index.x < 8 and index.y >= 0 and index.y < 8
-
-
-def is_position_valid(position: Position) -> bool:
-    return is_index_valid(position_to_index(position))
 
 
 def index_valid_or_raise(index: Index):
     if not is_index_valid(index):
         raise ValueError(f"invalid index {index}")
-
-
-def position_valid_or_raise(position: Position):
-    index_valid_or_raise(position_to_index(position))
 
 
 def get_index(b, index: Index):
@@ -77,14 +80,6 @@ def get_index(b, index: Index):
 
 def get_index_distance(i1: Index, i2: Index) -> Index:
     return Index(abs(i1.x - i2.x), abs(i1.y - i2.y))
-
-
-def get_position_distance(i1: Position, i2: Position) -> Position:
-    return Position(abs(i1.x - i2.x), abs(i1.y - i2.y))
-
-
-def get_position(b, position: Position):
-    return get_index(b, position_to_index(position))
 
 
 def get_other_color(color: Color):
@@ -104,23 +99,16 @@ class Piece:
 
     The following creates a new black Piece on A1 and moves it to H2
     ```
-    a = Piece(A, 1, BLACK)
-    a.move_to_position(H, 2)
-
-    Note: Since there are two ways to reference a piece "location": array
-    index, and the standard chess coordinate notation (A1-H8). Several helper
-    functions exist to switch between the two. Functions that
-    deal with the internal array index use the name "index" and have integer
-    parameter type hinting. Functions that use chess coordinates use the name
-    "position" in the function name and have one "Column" type hinted parameter
+    a = Piece(Column.A, Row._1, BLACK)
+    a.move_to_index(Column.H, Row._2)
     ```
     """
 
     value = None
-    __slots__ = ['index', 'color', 'has_moved']
+    __slots__ = ["index", "color", "has_moved"]
 
-    def __init__(self, x: Column, y: int, color: Color):
-        self.index = position_to_index(Position(x, y))
+    def __init__(self, x: Column, y: Row, color: Color):
+        self.index = Index(x, y)
         index_valid_or_raise(self.index)
         self.color = color
         self.has_moved = False
@@ -148,9 +136,6 @@ class Piece:
         if not self.has_moved == other.has_moved:
             print("has moved")
         return self == other
-
-    def get_position(self):
-        return index_to_position(self.index)
 
     def get_possible_moves_index(
         self,
@@ -199,11 +184,6 @@ class Piece:
     def move_to_relative_index(self, x: int, y: int) -> None:
         self.move_to_index(Index(self.index.x + x, self.index.y + y))
 
-    def move_to_position(self, pos: Position) -> None:
-        """Move to board position using standard chess naming: A1-H8"""
-        position_valid_or_raise(pos)
-        self.move_to_index(position_to_index(pos))
-
     def get_relative_index(self, b, x: int, y: int):
         return b.board[self.index.x + x][self.index.y + y]
 
@@ -213,24 +193,8 @@ class Piece:
         if piece:
             return piece.color
 
-    def get_possible_moves_position(
-        self, b, player=None, other_player=None
-    ) -> List[Position]:
-        return [
-            index_to_position(index)
-            for index in self.get_possible_moves_index(
-                b, player=player, other_player=other_player
-            )
-        ]
 
-    def get_attacking_moves_position(self, b, *args) -> List[Position]:
-        return [
-            index_to_position(index)
-            for index in self.get_attacking_moves_index(b, *args)
-        ]
-
-
-# TODO: en passante, promotion
+# TODO: en passante
 class Pawn(Piece):
     value = 1
 
@@ -244,6 +208,7 @@ class Pawn(Piece):
             y_direction = -1
         else:
             y_direction = 1
+
         # attack
         if (
             self.is_relative_index_valid(-1, y_direction)
@@ -264,23 +229,28 @@ class Pawn(Piece):
 
     def get_defended_moves_index(self, b, *args) -> List[Index]:
         """Defend left or right"""
+
         moves = []
         if self.color == Color.BLACK:
             y_direction = -1
         else:
             y_direction = 1
+
+        index_l = Index(self.index.x + 1, self.index.y + y_direction)
+        index_r = Index(self.index.x - 1, self.index.y + y_direction)
+
         # defend
-        if self.is_relative_index_valid(-1, y_direction):
-            moves.append(Index(self.index.x - 1, self.index.y + y_direction))
+        if is_index_valid(index_l):
+            moves.append(index_l)
         # defend
-        if self.is_relative_index_valid(1, y_direction):
-            moves.append(Index(self.index.x + 1, self.index.y + y_direction))
+        if is_index_valid(index_r):
+            moves.append(index_r)
         return moves
 
     def get_possible_moves_index(
         self, b, player=None, other_player=None
     ) -> List[Index]:
-        moves = []
+        moves = self.get_attacking_moves_index(b)
         if self.color == Color.BLACK:
             y_direction = -1
         else:
@@ -310,7 +280,6 @@ class Pawn(Piece):
                     Index(self.index.x, self.index.y + 2 * y_direction)
                 )
 
-        moves.extend(self.get_attacking_moves_index(b))
         return moves
 
     def promote(self):
@@ -320,25 +289,42 @@ class Pawn(Piece):
 
 class Knight(Piece):
     value = 3
+    __slots__ = ["index", "color", "has_moved", "potential_cache"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.potential_cache = None
 
     def __str__(self) -> str:
         return "♘" if self.color == Color.WHITE else "♞"
 
+    def move_to_index(self, *args, **kwargs) -> None:
+        super().move_to_index(*args, **kwargs)
+        self.potential_cache = None
+
     def get_potentials(self) -> List[Index]:
+
+        # caching potentials cuts time in this function by 80%
+        # this function is currently ~6.5% of total runtime
+        if self.potential_cache:
+            return self.potential_cache
         legal = []
+        x = self.index.x
+        y = self.index.y
         possible = [
-            Index(self.index.x + 1, self.index.y + 2),
-            Index(self.index.x - 1, self.index.y + 2),
-            Index(self.index.x - 1, self.index.y - 2),
-            Index(self.index.x + 1, self.index.y - 2),
-            Index(self.index.x + 2, self.index.y + 1),
-            Index(self.index.x - 2, self.index.y + 1),
-            Index(self.index.x - 2, self.index.y - 1),
-            Index(self.index.x + 2, self.index.y - 1),
+            Index(x + 1, y + 2),
+            Index(x - 1, y + 2),
+            Index(x - 1, y - 2),
+            Index(x + 1, y - 2),
+            Index(x + 2, y + 1),
+            Index(x - 2, y + 1),
+            Index(x - 2, y - 1),
+            Index(x + 2, y - 1),
         ]
         for index in possible:
             if is_index_valid(index):
                 legal.append(index)
+        self.potential_cache = legal
         return legal
 
     def get_possible_moves_index(
@@ -359,6 +345,7 @@ def get_indices_in_line(
     b,
     index: Index,
     color: Color,
+    o: List,
     x_mult: int = 0,
     y_mult: int = 0,
     max_depth: int = 7,
@@ -377,31 +364,26 @@ def get_indices_in_line(
     get_indices_in_line(b, 1, 1, color)
     ```
     """
-    o = []
     for i in range(1, max_depth):
         index_x = index.x + i * x_mult
         index_y = index.y + i * y_mult
-        derived_index = Index(index_x, index_y)
 
         # Inlined is_index_valid saves ~1s from benchmark
         if index_x >= 0 and index_x < 8 and index_y >= 0 and index_y < 8:
-            if index_type == IndexType.ALL:
-                o.append(derived_index)
-            else:
+            derived_index = Index(index_x, index_y)
 
-                piece = b.board[index_x][index_y]
-                if piece:
-                    # blocked by own color
-                    if piece.color == color:
-
-                        if index_type == IndexType.DEFENDED:
-                            o.append(derived_index)
-                    # attack
-                    else:
+            piece = b.board[index_x][index_y]
+            if piece:
+                # blocked by own color
+                if piece.color == color:
+                    if index_type == IndexType.DEFENDED:
                         o.append(derived_index)
-                    break
+                # attack
                 else:
                     o.append(derived_index)
+                break
+            else:
+                o.append(derived_index)
         else:
             break
     return o
@@ -411,61 +393,51 @@ def diagonal(
     b,
     index: Index,
     color,
+    out: List,
     max_depth: int = 7,
     index_type: IndexType = IndexType.ATTACKED,
 ) -> List[Index]:
-    out = []
 
-    # up right
-    out.extend(
-        get_indices_in_line(
-            b,
-            index,
-            color,
-            x_mult=1,
-            y_mult=1,
-            max_depth=max_depth,
-            index_type=index_type,
-        )
+    get_indices_in_line(
+        b,
+        index,
+        color,
+        out,
+        x_mult=1,
+        y_mult=1,
+        max_depth=max_depth,
+        index_type=index_type,
     )
 
-    # down right
-    out.extend(
-        get_indices_in_line(
-            b,
-            index,
-            color,
-            x_mult=1,
-            y_mult=-1,
-            max_depth=max_depth,
-            index_type=index_type,
-        )
+    get_indices_in_line(
+        b,
+        index,
+        color,
+        out,
+        x_mult=1,
+        y_mult=-1,
+        max_depth=max_depth,
+        index_type=index_type,
     )
-
-    # down left
-    out.extend(
-        get_indices_in_line(
-            b,
-            index,
-            color,
-            x_mult=-1,
-            y_mult=-1,
-            max_depth=max_depth,
-            index_type=index_type,
-        )
+    get_indices_in_line(
+        b,
+        index,
+        color,
+        out,
+        x_mult=-1,
+        y_mult=-1,
+        max_depth=max_depth,
+        index_type=index_type,
     )
-
-    # up left
-    out.extend(
-        get_indices_in_line(
-            b,
-            index,
-            color,
-            x_mult=-1,
-            y_mult=1,
-            max_depth=max_depth,
-            index_type=index_type,
-        )
+    get_indices_in_line(
+        b,
+        index,
+        color,
+        out,
+        x_mult=-1,
+        y_mult=1,
+        max_depth=max_depth,
+        index_type=index_type,
     )
     return out
 
@@ -474,6 +446,7 @@ def perpendicular(
     b,
     index: Index,
     color: Color,
+    out: List,
     max_depth: int = 7,
     index_type: IndexType = IndexType.ATTACKED,
 ) -> List[Index]:
@@ -481,51 +454,47 @@ def perpendicular(
     out = []
 
     # up
-    out.extend(
-        get_indices_in_line(
-            b,
-            index,
-            color,
-            y_mult=1,
-            max_depth=max_depth,
-            index_type=index_type,
-        )
+    get_indices_in_line(
+        b,
+        index,
+        color,
+        out,
+        y_mult=1,
+        max_depth=max_depth,
+        index_type=index_type,
     )
 
     # down
-    out.extend(
-        get_indices_in_line(
-            b,
-            index,
-            color,
-            y_mult=-1,
-            max_depth=max_depth,
-            index_type=index_type,
-        )
+    get_indices_in_line(
+        b,
+        index,
+        color,
+        out,
+        y_mult=-1,
+        max_depth=max_depth,
+        index_type=index_type,
     )
 
     # left
-    out.extend(
-        get_indices_in_line(
-            b,
-            index,
-            color,
-            x_mult=-1,
-            max_depth=max_depth,
-            index_type=index_type,
-        )
+    get_indices_in_line(
+        b,
+        index,
+        color,
+        out,
+        x_mult=-1,
+        max_depth=max_depth,
+        index_type=index_type,
     )
 
     # right
-    out.extend(
-        get_indices_in_line(
-            b,
-            index,
-            color,
-            x_mult=1,
-            max_depth=max_depth,
-            index_type=index_type,
-        )
+    get_indices_in_line(
+        b,
+        index,
+        color,
+        out,
+        x_mult=1,
+        max_depth=max_depth,
+        index_type=index_type,
     )
     return out
 
@@ -539,11 +508,11 @@ class Bishop(Piece):
     def get_possible_moves_index(
         self, b, player=None, other_player=None
     ) -> List[Index]:
-        return diagonal(b, self.index, self.color)
+        return diagonal(b, self.index, self.color, [])
 
     def get_defended_moves_index(self, b, *args) -> List[Index]:
         return diagonal(
-            b, self.index, self.color, index_type=IndexType.DEFENDED
+            b, self.index, self.color, [], index_type=IndexType.DEFENDED
         )
 
 
@@ -556,11 +525,11 @@ class Rook(Piece):
     def get_possible_moves_index(
         self, b, player=None, other_player=None
     ) -> List[Index]:
-        return perpendicular(b, self.index, self.color)
+        return perpendicular(b, self.index, self.color, [])
 
     def get_defended_moves_index(self, b, *args) -> List[Index]:
         return perpendicular(
-            b, self.index, self.color, index_type=IndexType.DEFENDED
+            b, self.index, self.color, [], index_type=IndexType.DEFENDED
         )
 
 
@@ -578,8 +547,8 @@ class King(Piece):
         """
         if other_player.color == self.color:
             raise ValueError("Need opposite player to verify checkness")
-        out = perpendicular(board, self.index, self.color, max_depth=2)
-        out.extend(diagonal(board, self.index, self.color, max_depth=2))
+        out = perpendicular(board, self.index, self.color, [], max_depth=2)
+        out = diagonal(board, self.index, self.color, out, max_depth=2)
         return list(
             set(out) - set(other_player.get_defended_indices(board, player))
         )
@@ -602,8 +571,8 @@ class King(Piece):
         """
         if other_player.color == self.color:
             raise ValueError("Need opposite player to verify checkness")
-        out = perpendicular(board, self.index, self.color, max_depth=2)
-        out.extend(diagonal(board, self.index, self.color, max_depth=2))
+        out = perpendicular(board, self.index, self.color, [], max_depth=2)
+        out = diagonal(board, self.index, self.color, out, max_depth=2)
 
         # castle
         if not self.has_moved and not self.in_check(
@@ -611,18 +580,18 @@ class King(Piece):
         ):
             if Color.WHITE == self.color:
                 # KCastle
-                k_rook = get_position(board, Position(Column.H, 1))
+                k_rook = get_index(board, Index(Column.H, Row._1))
 
                 # Check that kingside rook hasn't moved and squares are open
                 # and not under attack
-                positions = [Position(Column.F, 1), Position(Column.G, 1)]
+                indices = [Index(Column.F, Row._1), Index(Column.G, Row._1)]
                 if k_rook and not k_rook.has_moved:
                     legal = True
-                    for position in positions:
-                        if get_position(
-                            board, position
-                        ) or other_player.is_attacking_position(
-                            board, position, player
+                    for index in indices:
+                        if get_index(
+                            board, index
+                        ) or other_player.is_attacking_index(
+                            board, index, player
                         ):
                             legal = False
                             break
@@ -632,23 +601,23 @@ class King(Piece):
                             "Not rook: this shouldn't be possible"
                         )
                     if legal:
-                        out.append(position_to_index(Position(Column.G, 1)))
+                        out.append(Index(Column.G, Row._1))
 
                 # QCastle
-                q_rook = get_position(board, Position(Column.A, 1))
+                q_rook = get_index(board, Index(Column.A, Row._1))
 
-                positions = [Position(Column.C, 1), Position(Column.D, 1)]
+                indices = [Index(Column.C, Row._1), Index(Column.D, Row._1)]
                 if q_rook and not q_rook.has_moved:
                     legal = True
-                    for position in positions:
-                        if get_position(
-                            board, position
-                        ) or other_player.is_attacking_position(
-                            board, position, player
+                    for index in indices:
+                        if get_index(
+                            board, index
+                        ) or other_player.is_attacking_index(
+                            board, index, player
                         ):
                             legal = False
                             break
-                    if get_position(board, Position(Column.B, 1)):
+                    if get_index(board, Index(Column.B, Row._1)):
                         legal = False
 
                     if not isinstance(q_rook, Rook):
@@ -656,23 +625,23 @@ class King(Piece):
                             "Not rook: this shouldn't be possible"
                         )
                     if legal:
-                        out.append(position_to_index(Position(Column.C, 1)))
+                        out.append(Index(Column.C, Row._1))
 
             elif Color.BLACK == self.color:
                 # KCastle
-                k_rook = get_position(board, Position(Column.H, 8))
-                q_rook = get_position(board, Position(Column.A, 8))
+                k_rook = get_index(board, Index(Column.H, Row._8))
+                q_rook = get_index(board, Index(Column.A, Row._8))
 
                 # Check that kingside rook hasn't moved and squares are open
                 # and not under attack
-                positions = [Position(Column.F, 8), Position(Column.G, 8)]
+                indices = [Index(Column.F, Row._8), Index(Column.G, Row._8)]
                 if k_rook and not k_rook.has_moved:
                     legal = True
-                    for position in positions:
-                        if get_position(
-                            board, position
-                        ) or other_player.is_attacking_position(
-                            board, position, player
+                    for index in indices:
+                        if get_index(
+                            board, index
+                        ) or other_player.is_attacking_index(
+                            board, index, player
                         ):
                             legal = False
                             break
@@ -682,21 +651,21 @@ class King(Piece):
                             "Not rook: this shouldn't be possible"
                         )
                     if legal:
-                        out.append(position_to_index(Position(Column.G, 8)))
+                        out.append(Index(Column.G, Row._8))
 
                 # QCastle
-                positions = [Position(Column.C, 8), Position(Column.D, 8)]
+                indices = [Index(Column.C, Row._8), Index(Column.D, Row._8)]
                 if q_rook and not q_rook.has_moved:
                     legal = True
-                    for position in positions:
-                        if get_position(
-                            board, position
-                        ) or other_player.is_attacking_position(
-                            board, position, player
+                    for index in indices:
+                        if get_index(
+                            board, index
+                        ) or other_player.is_attacking_index(
+                            board, index, player
                         ):
                             legal = False
                             break
-                    if get_position(board, Position(Column.B, 8)):
+                    if get_index(board, Index(Column.B, Row._8)):
                         legal = False
 
                     if not isinstance(q_rook, Rook):
@@ -704,7 +673,7 @@ class King(Piece):
                             "Not rook: this shouldn't be possible"
                         )
                     if legal:
-                        out.append(position_to_index(Position(Column.C, 8)))
+                        out.append(Index(Column.C, Row._8))
         return list(
             set(out) - set(other_player.get_defended_indices(board, player))
         )
@@ -716,17 +685,17 @@ class King(Piece):
             board,
             self.index,
             self.color,
+            [],
             max_depth=2,
             index_type=IndexType.DEFENDED,
         )
-        out.extend(
-            diagonal(
-                board,
-                self.index,
-                self.color,
-                max_depth=2,
-                index_type=IndexType.DEFENDED,
-            )
+        out = diagonal(
+            board,
+            self.index,
+            self.color,
+            out,
+            max_depth=2,
+            index_type=IndexType.DEFENDED,
         )
         return out
 
@@ -740,16 +709,16 @@ class Queen(Piece):
     def get_possible_moves_index(
         self, b, player=None, other_player=None
     ) -> List[Index]:
-        out = perpendicular(b, self.index, self.color)
-        out.extend(diagonal(b, self.index, self.color))
+        out = perpendicular(b, self.index, self.color, [])
+        out = diagonal(b, self.index, self.color, out)
         return out
 
     def get_defended_moves_index(self, b, *_args) -> List[Index]:
         out = perpendicular(
-            b, self.index, self.color, index_type=IndexType.DEFENDED
+            b, self.index, self.color, [], index_type=IndexType.DEFENDED
         )
-        out.extend(
-            diagonal(b, self.index, self.color, index_type=IndexType.DEFENDED)
+        out = diagonal(
+            b, self.index, self.color, out, index_type=IndexType.DEFENDED
         )
         return out
 
@@ -759,7 +728,7 @@ AllPieces = Union[King, Queen, Rook, Bishop, Pawn, Piece]
 
 
 class Board:
-    __slots__ = ['board']
+    __slots__ = ["board"]
 
     def __init__(self, pieces: List):
 
@@ -796,20 +765,11 @@ class Board:
     def get_index(self, index: Index):
         return self.board[index.x][index.y]
 
-    def get_position(self, index: Position):
-        return self.get_index(position_to_index(index))
-
     def set_index(self, index: Index, piece: Piece) -> None:
         self.board[index.x][index.y] = piece
 
-    def set_position(self, position: Position, piece: Piece) -> None:
-        self.set_index(position_to_index(position), piece)
-
     def clear_index(self, index: Index) -> None:
         self.board[index.x][index.y] = None
-
-    def clear_position(self, position: Position) -> None:
-        self.clear_index(position_to_index(position))
 
     @staticmethod
     def to_color(string: Any, color: str):
@@ -899,6 +859,17 @@ piece_str_to_column = {
     "h": Column.H,
 }
 
+piece_str_to_row = {
+    "1": Row._1,
+    "2": Row._2,
+    "3": Row._3,
+    "4": Row._4,
+    "5": Row._5,
+    "6": Row._6,
+    "7": Row._7,
+    "8": Row._8,
+}
+
 piece_column_to_str = {
     Column.A: "a",
     Column.B: "b",
@@ -910,47 +881,54 @@ piece_column_to_str = {
     Column.H: "h",
 }
 
+piece_row_to_str = {
+    Row._1: "1",
+    Row._2: "2",
+    Row._3: "3",
+    Row._4: "4",
+    Row._5: "5",
+    Row._6: "6",
+    Row._7: "7",
+    Row._8: "8",
+}
+
 
 def indices_to_cmd(src_index: Index, dst_index: Index):
-    return positions_to_cmd(
-        index_to_position(src_index), index_to_position(dst_index)
-    )
-
-
-def positions_to_cmd(src_pos: Position, dst_pos: Position):
     return {
         "start": {
-            "file": piece_column_to_str[src_pos.x],
-            "rank": str(src_pos.y),
+            "file": piece_column_to_str[src_index.x],
+            "rank": piece_row_to_str[src_index.y],
         },
         "end": {
-            "file": piece_column_to_str[dst_pos.x],
-            "rank": str(dst_pos.y),
+            "file": piece_column_to_str[dst_index.x],
+            "rank": piece_row_to_str[dst_index.y],
         },
         "promote": None,
     }
 
 
-def positions_to_uci_str(src_pos: Position, dst_pos: Position) -> str:
+def indices_to_uci_str(src_index: Index, dst_index: Index) -> str:
     return "{}{}{}{}".format(
-        piece_column_to_str[src_pos.x],
-        str(src_pos.y),
-        piece_column_to_str[dst_pos.x],
-        str(dst_pos.y),
+        piece_column_to_str[src_index.x],
+        piece_row_to_str[src_index.y],
+        piece_column_to_str[dst_index.x],
+        piece_row_to_str[dst_index.y],
     )
 
 
-def cmd_to_position(cmd: dict):
-    """Map command notation to position"""
+def cmd_to_index(cmd: dict):
+    """Map command notation to index"""
     file = piece_str_to_column[cmd["file"]]
-    return Position(file, int(cmd["rank"]))
+    rank = piece_str_to_row[cmd["rank"]]
+    return Index(file, rank)
 
 
 class Player:
     """Represents one side, used to track the location of pieces for iterating
     over, rather than iterating over the entire board
     """
-    __slots__ = ['king_index', 'index_list', 'color']
+
+    __slots__ = ["king_index", "index_list", "color"]
 
     def __init__(self, color: Color, pieces: List):
         # Seed randomness for move selection
@@ -1035,10 +1013,7 @@ class Player:
             )
             print(
                 "nodes: {} move score: {} ({}, {})".format(
-                    count,
-                    move_score,
-                    index_to_position(move[0]),
-                    index_to_position(move[1])
+                    count, move_score, move[0], move[1]
                 )
             )
 
@@ -1056,7 +1031,9 @@ class Player:
                 best_move.append((move_score, move))
         total_time = time.time() - start
         nps = node_count / total_time
-        print(f"nps: {nps:.0f} evaluated {node_count} nodes in {total_time:.2f}s")
+        print(
+            f"nps: {nps:.0f} evaluated {node_count} nodes in {total_time:.2f}s"
+        )
 
         # Randomly select from equivalent bestmoves
         match = best_move[0][0]
@@ -1068,9 +1045,7 @@ class Player:
         print("best moves")
         print(best_move)
         moves = best_move[select]
-        return positions_to_uci_str(
-            index_to_position(moves[1][0]), index_to_position(moves[1][1])
-        )
+        return indices_to_uci_str(moves[1][0], moves[1][1])
 
     def value(self, board: Board, other_player) -> int:
         """Difference in material"""
@@ -1095,10 +1070,9 @@ class Player:
                     indices_to_cmd(src, dst), board, other_player
                 )
                 minimax, count = self.minimax(
-                    board, other_player, depth - 1, False)
-                value = max(
-                    value, minimax
+                    board, other_player, depth - 1, False
                 )
+                value = max(value, minimax)
                 self.undo_move(
                     indices_to_cmd(src, dst), board, other_player, undo
                 )
@@ -1111,10 +1085,9 @@ class Player:
                     indices_to_cmd(src, dst), board, other_player
                 )
                 minimax, count = self.minimax(
-                    board, other_player, depth - 1, True)
-                value = min(
-                    value, minimax
+                    board, other_player, depth - 1, True
                 )
+                value = min(value, minimax)
                 self.undo_move(
                     indices_to_cmd(src, dst), board, other_player, undo
                 )
@@ -1130,18 +1103,17 @@ class Player:
 
         # Discovery on own turn can only happen diagonally and perpendicularly
         # Don't check for pieces that don't fall in line with king
-        line = perpendicular(
-            b, self.king_index, self.color, index_type=IndexType.DEFENDED
+        out = []
+        perpendicular(
+            b, self.king_index, self.color, out, index_type=IndexType.DEFENDED
         )
-        line.extend(
-            diagonal(
-                b, self.king_index, self.color, index_type=IndexType.DEFENDED
-            )
+        diagonal(
+            b, self.king_index, self.color, out, index_type=IndexType.DEFENDED
         )
         in_check = self.in_check(b, other_player)
 
         for src, dst in moves:
-            if not in_check and src not in line:
+            if not in_check and src not in out:
                 unpruned.append((src, dst))
             else:
                 undo = self.do_move(indices_to_cmd(src, dst), b, other_player)
@@ -1156,9 +1128,7 @@ class Player:
     def get_possible_moves_index(
         self, b, other_player=None
     ) -> List[Tuple[Index, Index]]:
-        """Iterate over all pieces and get a list of Tuples with (src, dst)
-        positions
-        """
+        """Iterate over all pieces and get a list of Tuples with (src, dst)"""
         moves: List[Tuple[Index, Index]] = []
 
         for index in self.index_list:
@@ -1175,21 +1145,6 @@ class Player:
             )
         return unpruned
 
-    def get_possible_moves_position(
-        self, b, other_player=None
-    ) -> List[Tuple[Position, Position]]:
-        """Iterate over all pieces and get a list of Tuples with (src, dst)
-        positions
-        """
-        positions = []
-        for (start, end) in self.get_possible_moves_index(
-            b, other_player=other_player
-        ):
-            positions.append(
-                (index_to_position(start), index_to_position(end))
-            )
-        return positions
-
     @staticmethod
     def get_material(player, board: Board) -> int:
         score = 0
@@ -1197,9 +1152,7 @@ class Player:
             piece = board.board[index.x][index.y]
             if not piece:
                 raise ValueError(
-                    "Accounting error, no piece at position: {}".format(
-                        index_to_position(index)
-                    )
+                    "Accounting error, no piece at index: {}".format(index)
                 )
 
             if piece.value:
@@ -1221,14 +1174,6 @@ class Player:
         # Todo: Maybe don't remove dups for detecting double check?
         return list(set(out))
 
-    def get_attacking_positions(
-        self, b: Board, other_player
-    ) -> List[Position]:
-        return [
-            index_to_position(index)
-            for index in self.get_attacking_indices(b, other_player)
-        ]
-
     def get_defended_indices(self, b: Board, other_player) -> List[Index]:
         if other_player.color == self.color:
             raise ValueError("Need opposite player to verify checkness")
@@ -1240,17 +1185,11 @@ class Player:
                 out.append(move)
         return list(set(out))
 
-    def get_defended_positions(self, b: Board, other_player) -> List[Position]:
-        return [
-            index_to_position(index)
-            for index in self.get_defended_indices(b, other_player)
-        ]
-
-    def print_defended_positions(self, b: Board, other_player) -> None:
+    def print_defended_indices(self, b: Board, other_player) -> None:
         print("Defended Positions:")
         print("===================")
         pieces = []
-        for piece in self.get_defended_positions(b, other_player):
+        for piece in self.get_defended_indices(b, other_player):
             pieces.append(Piece(piece.x, piece.y, Color.BLACK))
         print(Board(pieces).prettify())
 
@@ -1258,20 +1197,6 @@ class Player:
         if other_player.color == self.color:
             raise ValueError("Need opposite player to verify checkness")
         return index in self.get_defended_indices(b, other_player)
-
-    def is_attacking_position(
-        self, b: Board, position: Position, other_player
-    ) -> bool:
-        return self.is_attacking_index(
-            b, position_to_index(position), other_player
-        )
-
-    def is_defending_position(
-        self, b: Board, position: Position, other_player
-    ) -> bool:
-        return self.is_defending_index(
-            b, position_to_index(position), other_player
-        )
 
     def set_piece_index(self, index: Index):
         """TODO: ordering? LRU vs MRU"""
@@ -1285,15 +1210,12 @@ class Player:
         self.remove_piece_index(piece.index)
         self.set_piece_index(new_index)
 
-    def update_piece_position(self, piece: Piece, new_position: Position):
-        return self.update_piece_index(piece, position_to_index(new_position))
-
     def _verify_do_move(
         self,
         move: dict,
         board: Board,
         other_player,
-        dst_pos: Position,
+        dst_index: Index,
         src_piece: Piece,
         dst_piece: Piece,
     ):
@@ -1324,14 +1246,14 @@ class Player:
             )
 
         # Get all moves the source piece can do
-        moves = src_piece.get_possible_moves_position(
+        moves = src_piece.get_possible_moves_index(
             board, player=self, other_player=other_player
         )
 
         # Check that requested destination is legal
-        if dst_pos not in moves:
+        if dst_index not in moves:
             raise ValueError(
-                f"Requested move {dst_pos} for piece {src_piece} "
+                f"Requested move {dst_index} for piece {src_piece} "
                 f"is not in legal movelist: {moves}"
             )
 
@@ -1340,14 +1262,14 @@ class Player:
             raise ValueError(
                 "Piece {} at {} is same color({}),"
                 " can't move there!".format(
-                    dst_piece, dst_pos, dst_piece.color
+                    dst_piece, dst_index, dst_piece.color
                 )
             )
 
     def undo_castle(
-        self, board: Board, other_player, dst_pos: Position, rank: int, undo
+        self, board: Board, other_player, dst_index: Index, rank: str, undo
     ):
-        if dst_pos == Position(Column.G, rank):
+        if dst_index == Index(Column.G, piece_str_to_row[rank]):
             self.undo_move(
                 {
                     "start": {
@@ -1364,7 +1286,7 @@ class Player:
                 other_player,
                 undo,
             )
-        elif dst_pos == Position(Column.C, rank):
+        elif dst_index == Index(Column.C, piece_str_to_row[rank]):
             self.undo_move(
                 {
                     "start": {
@@ -1382,10 +1304,10 @@ class Player:
                 undo,
             )
         else:
-            raise ValueError(f"Invalid castling destination: {dst_pos}")
+            raise ValueError(f"Invalid castling destination: {dst_index}")
 
     def do_castle(
-        self, board: Board, other_player, dst_pos: Position, rank: int
+        self, board: Board, other_player, dst_index: Index, rank: str
     ):
         """king move done, need to move the rook
         position rules are identical besides rank
@@ -1395,7 +1317,7 @@ class Player:
         is called by do_move(), but subsequent do_moves() should never call
         do_castle()
         """
-        if dst_pos == Position(Column.G, rank):
+        if dst_index == Index(Column.G, piece_str_to_row[rank]):
             return self.do_move(
                 {
                     "start": {
@@ -1412,7 +1334,7 @@ class Player:
                 other_player,
                 verify=False,
             )
-        elif dst_pos == Position(Column.C, rank):
+        elif dst_index == Index(Column.C, piece_str_to_row[rank]):
             return self.do_move(
                 {
                     "start": {
@@ -1430,7 +1352,7 @@ class Player:
                 verify=False,
             )
         else:
-            raise ValueError(f"Invalid castling destination: {dst_pos}")
+            raise ValueError(f"Invalid castling destination: {dst_index}")
 
     def do_move(
         self, move: dict, board: Board, other_player, verify=True
@@ -1439,68 +1361,69 @@ class Player:
         castle_undo = None
         start = move["start"]
         end = move["end"]
-        # Source position
-        src_pos = cmd_to_position(start)
 
-        # Destination position
-        dst_pos = cmd_to_position(end)
+        # Source index
+        src_index = cmd_to_index(start)
 
-        # Get piece at source position
-        src_piece = get_position(board, src_pos)
+        # Destination index
+        dst_index = cmd_to_index(end)
+
+        # Get piece at source index
+        src_piece = get_index(board, src_index)
         src_piece_has_moved = src_piece.has_moved
 
-        # Get piece at destination position
-        dst_piece = get_position(board, dst_pos)
+        # Get piece at destination index
+        dst_piece = get_index(board, dst_index)
 
         # Skip move verification for castling - we already did that
         if verify:
             # Check for errors
             self._verify_do_move(
-                move, board, other_player, dst_pos, src_piece, dst_piece
+                move, board, other_player, dst_index, src_piece, dst_piece
             )
 
         # Handle taking opponent's piece
         if dst_piece is not None:
 
             # Remove piece from other player's index
-            other_player.remove_piece_index(position_to_index(dst_pos))
+            other_player.remove_piece_index(dst_index)
 
         # Pawn promotion
         if move["promote"]:
             old_src = src_piece
             src_piece = piece_notation_to_class[move["promote"].upper()](
-                src_pos.x, src_pos.y, old_src.color
+                src_index.x, src_index.y, old_src.color
             )
 
             # Replace old piece
-            board.set_position(src_pos, src_piece)
+            board.set_index(src_index, src_piece)
 
         # Update this player's accounting
-        self.update_piece_position(src_piece, dst_pos)
+        self.update_piece_index(src_piece, dst_index)
 
         # Update piece accounting
-        src_piece.move_to_position(dst_pos)
+        src_piece.move_to_index(dst_index)
 
-        # Set piece to new position
-        board.set_position(dst_pos, src_piece)
+        # Set piece to new piece
+        board.set_index(dst_index, src_piece)
 
-        # Delete the old board position
-        board.clear_position(src_pos)
+        # Delete the old board piece
+        board.clear_index(src_index)
 
         # Save king coordinate
         if isinstance(src_piece, King):
-            self.king_index = position_to_index(dst_pos)
-            distance = get_position_distance(src_pos, dst_pos)
+            self.king_index = dst_index
+            distance = get_index_distance(src_index, dst_index)
 
             # Castling, do rook move too, legality checked already
             if distance.x > 1:
                 if Color.WHITE == self.color:
                     castle_undo = self.do_castle(
-                        board, other_player, dst_pos, 1
+                        board, other_player, dst_index, "1"
                     )
                 elif Color.BLACK == self.color:
                     castle_undo = self.do_castle(
-                        board, other_player, dst_pos, 8
+                        board, other_player, dst_index, "8"
                     )
 
         return {
@@ -1515,64 +1438,70 @@ class Player:
         end = move["start"]
         start = move["end"]
 
-        # Source position
-        src_pos = cmd_to_position(start)
+        # Source index
+        src_index = cmd_to_index(start)
 
-        # Destination position
-        dst_pos = cmd_to_position(end)
+        # Destination index
+        dst_index = cmd_to_index(end)
 
-        # Get piece at source position
-        src_piece = get_position(board, src_pos)
+        # Get piece at source index
+        src_piece = get_index(board, src_index)
         if not src_piece:
             print(board.prettify())
-            raise ValueError(f"Expected src position, {src_piece} {src_pos}")
+            raise ValueError(f"Expected src index, {src_piece} {src_index}")
 
         # Handle taking opponent's piece
         if undo["dst_piece"] is not None:
 
             # Remove piece from other player's index
-            other_player.set_piece_index(position_to_index(src_pos))
+            other_player.set_piece_index(src_index)
 
         # Pawn promotion
         if move["promote"]:
-            src_piece = Pawn(src_pos.x, src_pos.y, src_piece.color)
+            src_piece = Pawn(src_index.x, src_index.y, src_piece.color)
 
             # Replace old piece
-            board.set_position(src_pos, src_piece)
+            board.set_index(src_index, src_piece)
 
         # Update this player's accounting
-        src_pos = index_to_position(src_piece.index)
-        self.update_piece_position(src_piece, dst_pos)
+        self.update_piece_index(src_piece, dst_index)
 
         # Update piece accounting
-        src_piece.move_to_position(dst_pos)
+        src_piece.move_to_index(dst_index)
 
-        # Set piece to new position
-        board.set_position(dst_pos, src_piece)
+        # Set piece to new index
+        board.set_index(dst_index, src_piece)
 
         if undo["dst_piece"] is not None:
             board.set_index(undo["dst_piece"].index, undo["dst_piece"])
         else:
-            board.clear_position(src_pos)
+            board.clear_index(src_index)
 
         # Save king coordinate
         if isinstance(src_piece, King):
-            self.king_index = position_to_index(dst_pos)
-            distance = get_position_distance(src_pos, dst_pos)
+            self.king_index = dst_index
+            distance = get_index_distance(src_index, dst_index)
 
             # Castling, do rook move too, legality checked already
             if distance.x > 1:
                 if Color.WHITE == self.color:
                     self.undo_castle(
-                        board, other_player, src_pos, 1, undo["castle_undo"]
+                        board,
+                        other_player,
+                        src_index,
+                        "1",
+                        undo["castle_undo"],
                     )
                 elif Color.BLACK == self.color:
                     self.undo_castle(
-                        board, other_player, src_pos, 8, undo["castle_undo"]
+                        board,
+                        other_player,
+                        src_index,
+                        "8",
+                        undo["castle_undo"],
                     )
 
-
-        # Delete the old board position
+        # Delete the old board index
         src_piece.has_moved = undo["src_piece_moved"]
 
     def move(self, move: dict, board: Board, other_player):

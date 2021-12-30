@@ -68,6 +68,7 @@ class TestUCI:
             main()
         except StopIteration:
             pass
+
     def test_position_valid_or_raise(self):
         with pytest.raises(ValueError):
             position_valid_or_raise("e2e4e6")
