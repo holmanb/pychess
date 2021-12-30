@@ -86,6 +86,14 @@ RANDO_CRASH_5 = DEFAULT_START + addln(
     ]
 )
 
+RANDO_CRASH_6 = DEFAULT_START + addln(
+    [
+        "position startpos moves g2g3 g8f6 e2e4",
+        "isready",
+        "go wtime 300000 btime 300000 movestogo 40",
+    ]
+)
+
 
 class TestUCI:
     def _main(self):
@@ -150,6 +158,10 @@ class TestUCI:
 
     @patch("builtins.input", side_effect=RANDO_CRASH_5)
     def test_main_crash_5(self, _input):
+        self._main()
+
+    @patch("builtins.input", side_effect=RANDO_CRASH_6)
+    def test_main_crash_6(self, _input):
         self._main()
 
 
