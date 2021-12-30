@@ -1016,7 +1016,7 @@ class Player:
             undo = self.do_move(
                 indices_to_cmd(move[0], move[1]), board, other_player
             )
-            move_score, count = self.minimax(
+            move_score, count, board = self.minimax(
                 board, other_player, depth - 1, True
             )
             node_count = node_count + count
@@ -1025,22 +1025,22 @@ class Player:
             )
             print(
                 "nodes: {} move score: {} ({}, {})".format(
-                    count, move_score, move[0], Index(Column(move[1].x), Column(move[1].y))
+                    count, move_score, move[0], Index(Column(move[1].x), Row(move[1].y))
                 )
             )
 
             # First score add
             if not best_move:
-                best_move.append((move_score, move))
+                best_move.append((move_score, move, board))
 
             # Better score replace
             elif move_score > best_move[0][0]:
                 del best_move
-                best_move = [(move_score, move)]
+                best_move = [(move_score, move, board)]
 
             # Equivalent score add
             elif move_score == best_move[0][0]:
-                best_move.append((move_score, move))
+                best_move.append((move_score, move, board))
         total_time = time.time() - start
         nps = node_count / total_time
         print(
