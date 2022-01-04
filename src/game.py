@@ -137,9 +137,9 @@ class Chess:
                 self.move_color = Color.WHITE
 
         if self.move_color == Color.WHITE:
-            return self.white.get_best_move(self.board, self.black)
+            return self.white.get_and_print_best_move(self.board, self.black)
         elif self.move_color == Color.BLACK:
-            return self.black.get_best_move(self.board, self.white)
+            return self.black.get_and_print_best_move(self.board, self.white)
         raise ValueError("Invalid color")
 
 

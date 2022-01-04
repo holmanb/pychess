@@ -21,20 +21,8 @@ from ..components import (
     index_valid_or_raise,
 )
 
-#    Position,
-#    position_to_index,
-#    index_to_position,
-
 
 class TestHelpers:
-    #    def pos_index(self):
-    #        assert Index(0, 0) == position_to_index(Position(Column.A, 1))
-    #        assert Index(7, 7) == position_to_index(Position(Column.H, 8))
-
-    #    def index_pos(self):
-    #        assert Position(Column.A, 1) == index_to_position(Index(0, 0))
-    #        assert Position(Column.H, 8) == index_to_position(Index(7, 7))
-
     def bounds_check(self):
         with raises(ValueError):
             index_valid_or_raise(Index(-1, 0))
@@ -718,6 +706,22 @@ class TestKing:
 
 
 class TestPlayer:
+    def test_player_get_material(self):
+        board = [
+            Pawn(Column.A, Row._2, Color.WHITE),
+            Pawn(Column.B, Row._2, Color.WHITE),
+            Pawn(Column.C, Row._2, Color.WHITE),
+            Pawn(Column.D, Row._2, Color.WHITE),
+            Pawn(Column.E, Row._2, Color.WHITE),
+            Pawn(Column.F, Row._2, Color.WHITE),
+            Pawn(Column.G, Row._2, Color.WHITE),
+        ]
+        b = Board(board)
+        wplayer = Player(Color.WHITE, board)
+        bplayer = Player(Color.BLACK, [])
+        assert 7 == wplayer.get_material(wplayer, b)
+        assert 0 == bplayer.get_material(bplayer, b)
+
     def test_player_is_defending_one_pawn(self):
         board = [
             Pawn(Column.C, Row._5, Color.WHITE),
