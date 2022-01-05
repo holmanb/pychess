@@ -308,8 +308,8 @@ class TestBishop:
         wk = King(Column.A, Row._2, Color.WHITE)
         b1 = Bishop(Column.D, Row._6, Color.BLACK)
         bk = King(Column.D, Row._5, Color.BLACK)
-        black = Player(Color.BLACK, [b1, bk])
         white = Player(Color.WHITE, [r1, wk])
+        black = Player(Color.BLACK, [b1, bk])
         pieces = [
             r1,
             b1,
@@ -317,13 +317,9 @@ class TestBishop:
             bk,
         ]
         b = Board(pieces)
-        moves = white.get_possible_moves_index(b, black)
+        moves = black.get_possible_moves_index(b, white)
         for src_move, _ in moves:
-            assert Index(Column.D, Row._6) not in src_move
-
-        # Assert the bishop doesn't have possible moves
-        for moves in white.get_possible_moves_index(b, black):
-            assert b1.index is not moves[0]
+            assert Index(Column.D, Row._6) != src_move
 
     def test_bishop_move_to_defend_king(self):
         """Bishop must invoke is_check() before returning moves

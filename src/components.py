@@ -1133,28 +1133,14 @@ class Player:
         """Remove moves that could possibly induce check"""
 
         unpruned = []
-
-        # Discovery on own turn can only happen diagonally and perpendicularly
-        # Don't check for pieces that don't fall in line with king
-        out = []
-        perpendicular(
-            b, self.king_index, self.color, out, index_type=IndexType.DEFENDED
-        )
-        diagonal(
-            b, self.king_index, self.color, out, index_type=IndexType.DEFENDED
-        )
-        in_check = self.in_check(b, other_player)
         for src, dst in moves:
-            if not in_check and src not in out:
+            undo = self.do_move(indices_to_cmd(src, dst), b, other_player)
+
+            # Remove move from list if it induces check
+            if not self.in_check(b, other_player):
                 unpruned.append((src, dst))
-            else:
-                undo = self.do_move(indices_to_cmd(src, dst), b, other_player)
 
-                # Remove move from list if it induces check
-                if not self.in_check(b, other_player):
-                    unpruned.append((src, dst))
-
-                self.undo_move(indices_to_cmd(src, dst), b, other_player, undo)
+            self.undo_move(indices_to_cmd(src, dst), b, other_player, undo)
         return unpruned
 
     def get_possible_moves_index(
