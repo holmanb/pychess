@@ -120,14 +120,21 @@ RANDO_CRASH_8 = DEFAULT_START + addln(
     ]
 )
 
-
-# King is in check here but doesn't know it
 RANDO_CRASH_9 = DEFAULT_START + addln(
     [
         "position startpos moves e2e3 e7e6 d2d4 g8e7 e3e4 h8g8 f2f4 g7g6 f4f5 "
         "b7b5 c2c4 c7c6 b1c3 f8g7 c3d5 g7d4 c1e3 d8c7 e3d4 c6d5 c4d5 c7c1 "
         "d1c1 e7f5 g1f3 f5d4 f3d4 e6d5 e4d5 a7a5 c1e3 e8d8 e3e6 f7e6 d4c6 "
         "d7c6 d5c6 b8c6 f1c4 c6a7 a1d1",
+        "isready",
+        "go wtime 300000 btime 300000 movestogo 40",
+    ]
+)
+
+RANDO_CRASH_10 = DEFAULT_START + addln(
+    [
+        "position startpos moves e2e3 b8a6 d2d4 g7g6 g1f3 g8h6 f3e5 h6g4 e5g4 "
+        "e7e5 d4e5 d8f6 e5f6 e8d8 g4e5 d7d5 e5f7 d8d7 f7h8 f8e7 f6e7",
         "isready",
         "go wtime 300000 btime 300000 movestogo 40",
     ]
@@ -213,6 +220,10 @@ class TestUCI:
 
     @patch("builtins.input", side_effect=RANDO_CRASH_9)
     def test_main_crash_9(self, _input):
+        self._main()
+
+    @patch("builtins.input", side_effect=RANDO_CRASH_10)
+    def test_main_crash_10(self, _input):
         self._main()
 
 SACK_QUEEN = addln(

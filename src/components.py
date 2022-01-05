@@ -10,7 +10,6 @@ import uci
 Index = namedtuple("Index", ("x", "y"))
 Position = namedtuple("Position", ("x", "y"))
 INF = 1 << 9
-NINF = 1 >> 9
 
 
 class Column(IntEnum):
@@ -309,7 +308,9 @@ class Pawn(Piece):
             y_direction = 1
 
         # if not blocked, move forward
-        if not self.get_relative_index(b, 0, y_direction):
+        if (
+                self.is_relative_index_valid(0, y_direction) and
+                not self.get_relative_index(b, 0, y_direction)):
             moves.append(Index(self.index.x, self.index.y + y_direction))
 
         # if not blocked, move forward
@@ -1005,56 +1006,29 @@ class Player:
         return b.get_index(self.king_index).in_check(b, self, other_player)
 
     def get_best_move(
-            self, board: Board, other_player, depth=5) -> Tuple[str, int, int]:
+            self, board: Board, other_player, depth) -> Tuple[str, int, int]:
         """Current strategy: material
 
         TODO: something is wrong here or in minimax
         """
-        possible_moves = self.get_possible_moves_index(board, other_player)
-        best_moves = []
-        node_count = 0
-        move_score = 0
-        for move in sorted(possible_moves):
-            in_start = time.time()
-            undo = self.do_move(
-                indices_to_cmd(move[0], move[1]), board, other_player
-            )
-            move_score, count = self.minimax(
-                board, other_player, depth - 1, False
-            )
-            node_count = node_count + count
-            self.undo_move(
-                indices_to_cmd(move[0], move[1]), board, other_player, undo
-            )
-            in_nps = count / (time.time() - in_start)
-            uci.uci(f"info nps {in_nps:.0f}")
+        in_start = time.time()
 
-            # First score add
-            if not best_moves:
-                print("add first move")
-                best_moves.append((move_score, move))
+        best_moves, move_score, count = self.minimax(
+            board, other_player, depth, True
+        )
 
-            # Better score replace
-            elif move_score > best_moves[0][0]:
-                print("replace with better")
-                del best_moves
-                best_moves = [(move_score, move)]
+        in_nps = count / (time.time() - in_start)
+        uci.uci(f"info nps {in_nps:.0f}")
 
-            # Equivalent score add
-            elif move_score == best_moves[0][0]:
-                best_moves.append((move_score, move))
         # Randomly select from equivalent bestmoves
-        match = best_moves[0][0]
         select = random.randrange(len(best_moves))
         moves = best_moves[select]
-        for move in best_moves:
-            if match != move[0]:
-                raise ValueError("Scores don't match")
-        bestmove = indices_to_uci_str(moves[1][0], moves[1][1])
-        return (bestmove, move_score, node_count, best_moves)
+        bestmove = indices_to_uci_str(moves[0], moves[1])
+
+        return (bestmove, move_score, count, best_moves)
 
     def get_and_print_best_move(
-            self, board: Board, other_player, depth=1) -> str:
+            self, board: Board, other_player, depth=2) -> str:
         start = time.time()
 
         best_move, move_score, node_count, best_moves = self.get_best_move(
@@ -1068,18 +1042,18 @@ class Player:
         uci.uci(f"info nps {nps:.0f}")
         uci.uci(f"info depth {depth:.0f}")
         uci.uci(f"info nodes {node_count}")
-        uci.uci(f"info score cp {move_score*100}")
+        uci.uci("info score cp {}".format(self.value(board, other_player)))
         match = best_moves[0][0]
 
         print("selecting between scores of value: {}".format(match))
         for move in best_moves:
             print("best move: {} score: {}".format(
                 indices_to_uci_str(
-                    move[1][0], Index(
-                        Column(move[1][1].x), Row(move[1][1].y))
+                    move[0], Index(
+                        Column(move[1].x), Row(move[1].y))
                 ),
-                match))
-        print(f"{best_move} {move_score*100}\n{board}")
+                move_score))
+        print(f"{best_move} {move_score*100}")
         return best_move
 
     def value(self, board: Board, other_player) -> int:
@@ -1088,78 +1062,70 @@ class Player:
             other_player, board
         )
 
-
     def minimax(
         self, board: Board, other_player, depth: int, maximizing_player: bool
-    ) -> Tuple[int, int]:
+    ) -> Tuple[List[Tuple], int, int]:
 
         nodes = 0
-        if maximizing_player:
-            # Base case
-            if 0 == depth:
-                value = NINF
-                for move in self.get_possible_moves_index(board, other_player):
-                    nodes = nodes + 1
-                    undo = self.do_move(
-                        indices_to_cmd(move[0], move[1]), board, other_player
-                    )
-                    value = max(value, self.value(board, other_player))
-                    self.undo_move(
-                        indices_to_cmd(move[0], move[1]),
-                        board, other_player, undo
-                    )
+        best_moves = []
+        if depth == 0:
+            if maximizing_player:
+                return ([()], self.value(board, other_player), 1)
+            else:
+                return ([()], other_player.value(board, self), 1)
 
-                # This gets the max of the max, should it get the max of the
-                # Min instead?
-                return (value, nodes)
+        if maximizing_player:
 
             possible_moves = self.get_possible_moves_index(board, other_player)
-            out_value = value = INF
-            for src, dst in possible_moves:
+            out_value = -INF
+            for move in possible_moves:
+                src, dst = move
                 undo = self.do_move(
                     indices_to_cmd(src, dst), board, other_player
                 )
-                minimax, count = self.minimax(
-                    board, other_player, depth, False
+                _, minimax, count = self.minimax(
+                    board, other_player, depth - 1, False
                 )
-                out_value = min(value, minimax)
+
                 self.undo_move(
                     indices_to_cmd(src, dst), board, other_player, undo
                 )
+
+                if minimax > out_value:
+                    best_moves = [move]
+                    out_value = minimax
+                elif minimax == out_value:
+                    best_moves.append(move)
+
                 nodes = nodes + count
 
-            return (out_value, nodes)
+            return (best_moves, out_value, nodes)
         else:
-            # Base case
-            if 0 == depth:
-                value = NINF
-                for move in other_player.get_possible_moves_index(board, self):
-                    nodes = nodes + 1
-                    undo = other_player.do_move(
-                        indices_to_cmd(move[0], move[1]), board, self
-                    )
-                    value = max(value, other_player.value(board, self))
-                    other_player.undo_move(
-                        indices_to_cmd(move[0], move[1]),
-                        board, self, undo
-                    )
-                return (-value, nodes)
-
             possible_moves = other_player.get_possible_moves_index(board, self)
-            value = out_value = INF
-            for src, dst in possible_moves:
+            out_value = INF
+            for move in possible_moves:
+                src, dst = move
                 undo = other_player.do_move(
                     indices_to_cmd(src, dst), board, self
                 )
-                minimax, count = other_player.minimax(
-                    board, self, depth - 1, True
+                _, minimax, count = self.minimax(
+                    board, other_player, depth - 1, True
                 )
-                out_value = min(value, minimax)
+
                 other_player.undo_move(
                     indices_to_cmd(src, dst), board, self, undo
                 )
+
+                if minimax < out_value:
+                    best_moves = [move]
+                    out_value = minimax
+                elif minimax == out_value:
+                    best_moves.append(move)
+
                 nodes = nodes + count
-            return (out_value, nodes)
+
+            return (best_moves, out_value, nodes)
+
 
     def prune_checking_moves(
         self, moves: List[Tuple[Index, Index]], b, other_player
@@ -1205,7 +1171,7 @@ class Player:
             for piece in piece_moves:
 
                 # Can't actually move to king
-                if not isinstance(b.get_index(piece), King): # and is_index_valid(dst):
+                if not isinstance(b.get_index(piece), King):
                     moves.append((src, piece))
 
         pruned = self.prune_checking_moves(moves, b, other_player)
@@ -1221,8 +1187,7 @@ class Player:
                     "Accounting error, no piece at index: {}".format(index)
                 )
 
-            if piece.value:
-                score += piece.value
+            score += piece.value
         return score
 
     def is_attacking_index(self, b: Board, index: Index, other_player):
