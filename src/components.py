@@ -1155,10 +1155,7 @@ class Player:
                 b, player=self, other_player=other_player
             )
             for piece in piece_moves:
-
-                # Can't actually move to king
-                if not isinstance(b.get_index(piece), King):
-                    moves.append((src, piece))
+                moves.append((src, piece))
 
         pruned = self.prune_checking_moves(moves, b, other_player)
         return pruned
